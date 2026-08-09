@@ -16,6 +16,7 @@ export type FundingPreset = Omit<RenovationFunding, 'id' | 'preset' | 'amount'> 
 export const FUNDING_PRESETS: ReadonlyArray<FundingPreset> = Object.freeze([
   { key: 'kfw270', name: 'KfW 270 (PV-Anlage)', kind: 'credit', interestRate: 0, interestOnlyYears: 1, termYears: 20 },
   { key: 'kfw261', name: 'KfW 261 (Effizienzhaus)', kind: 'credit', interestRate: 0, interestOnlyYears: 1, termYears: 30 },
+  { key: 'kfw358', name: 'KfW 358/359 (Ergänzungskredit)', kind: 'credit', interestRate: 0, interestOnlyYears: 1, termYears: 30 },
   { key: 'bafa', name: 'BAFA Einzelmaßnahmen', kind: 'grant', interestRate: 0, interestOnlyYears: 0, termYears: 0 },
 ]);
 

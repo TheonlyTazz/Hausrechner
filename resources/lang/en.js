@@ -45,5 +45,7 @@ export default {
   'Bruttokapitalbedarf': 'Gross capital required',
   'Eigenkapital abgezogen': 'Equity deducted',
   'Nettokapitalbedarf': 'Net capital required',
+  'KfW 124 kann im Darlehen-Tab unabhängig von einer Sanierung aktiviert werden. KfW 358/359 setzt grundsätzlich eine Zuschusszusage für energetische Einzelmaßnahmen voraus.': 'KfW 124 can be enabled in the Loans tab independently of renovation. KfW 358/359 generally requires prior grant approval for eligible energy-efficiency measures.',
+  'Einmalzuschüsse werden erst bei aktivierter Sanierung vom Sanierungsbudget abgezogen. Förderkredite bleiben aktiv.': 'One-time grants are deducted from the renovation budget only when renovation is enabled. Subsidized loans remain active.',
   'Unverbindliche Modellrechnung, keine Förderzusage oder Finanzberatung. Konditionen, Förderfähigkeit, Sondertilgungsrechte und WoFlV-Berechnung vor Antragstellung mit Förderinstitut und Bank prüfen.': 'Non-binding model calculation, not a subsidy approval or financial advice. Verify terms, eligibility, special repayment rights and WoFlV calculation with the funding institution and bank before applying.',
 };

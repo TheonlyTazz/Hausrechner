@@ -88,11 +88,26 @@ describe('financing scenarios', () => {
     expect(calculator.renovationFundingInterestSaved.value).toBeGreaterThan(0);
   });
 
-  test('scenario C retains configured funding while the active renovation toggle is off', () => {
+  test('subsidized credits remain active while the renovation toggle is off', () => {
     const calculator = useFinancingCalculator();
     calculator.inputs.renovationFunding.push({ id: 'c-only', name: 'KfW 270', kind: 'credit', amount: 15000, interestRate: 2, interestOnlyYears: 1, termYears: 20 });
-    expect(calculator.activeScenario.value.loans.some(loan => loan.name === 'KfW 270')).toBe(false);
+    expect(calculator.activeScenario.value.loans.some(loan => loan.name === 'KfW 270')).toBe(true);
     expect(calculator.scenarioRenovated.value.loans.some(loan => loan.name === 'KfW 270')).toBe(true);
+  });
+
+  test('one-time grants stay inactive without a renovation budget', () => {
+    const calculator = useFinancingCalculator();
+    const baseline = calculator.activeScenario.value.required;
+    calculator.inputs.renovationFunding.push({ id: 'grant-off', name: 'BAFA', kind: 'grant', amount: 10000 });
+    expect(calculator.activeScenario.value.required).toBe(baseline);
+    expect(calculator.activeScenario.value.renovationGrant).toBe(0);
+  });
+
+  test('KfW 124 is available independently of renovation', () => {
+    const calculator = useFinancingCalculator();
+    calculator.inputs.renovationEnabled = false;
+    calculator.inputs.kfwEnabled = true;
+    expect(calculator.activeScenario.value.loans.find(loan => loan.name === 'KfW 124')?.principal).toBeGreaterThan(0);
   });
 
   test('BAFA example reconciles gross need, equity, grant and every loan without a double deduction', () => {

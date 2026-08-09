@@ -146,7 +146,7 @@ export function useFinancingCalculator(locale = { value: 'de' }) {
   function buildScenario({ wiBank = inputs.wiBankEnabled, renovationOn = inputs.renovationEnabled, includeRenovationFunding = true } = {}) {
     const grant = renovationOn && includeRenovationFunding ? renovationGrantTotal.value : 0;
     const required = roundCent(inputs.purchasePrice) + ancillaryCosts.value + (renovationOn ? Math.max(0, roundCent(inputs.renovationBudget) - grant) : 0);
-    const fundingLoans = renovationOn && includeRenovationFunding ? renovationLoans.value : [];
+    const fundingLoans = includeRenovationFunding ? renovationLoans.value : [];
     const { loans, bank } = buildLoanPortfolio({ inputs, required, equity: roundCent(inputs.equity), wiBank, wiBankEligible: wiBankEligible.value, renovationLoans: fundingLoans, roundCent, monthlyPayment, percentRate });
     const contractualMonthly = loans.reduce((sum, l) => sum + l.payment, 0);
     const targetGrossMonthly = roundCent(inputs.targetMonthlyRate) + roundCent(inputs.rentalIncome);

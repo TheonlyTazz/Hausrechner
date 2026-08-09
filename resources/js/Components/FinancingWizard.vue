@@ -28,7 +28,7 @@ const finish = () => {
         <section v-if="step === 0">
           <h3 class="text-lg font-bold">{{ t('Objekt und Kaufkosten') }}</h3><p class="mt-1 text-sm text-slate-500">{{ t('Kaufpreis, Nebenkosten und geplante Sanierung.') }}</p>
           <div class="mt-5 grid gap-4 sm:grid-cols-2"><label class="sm:col-span-2">{{ t('Kaufpreis (€)') }}<CurrencyInput v-model="c.inputs.purchasePrice" class="mt-1 w-full rounded-lg border-slate-300" /></label><label>{{ t('Grunderwerbsteuer (%)') }}<input v-model.number="c.inputs.transferTaxPercent" type="number" step="0.1" class="mt-1 w-full rounded-lg border-slate-300"></label><label>{{ t('Notar (%)') }}<input v-model.number="c.inputs.notaryPercent" type="number" step="0.1" class="mt-1 w-full rounded-lg border-slate-300"></label><label>{{ t('Makler (%)') }}<input v-model.number="c.inputs.brokerPercent" type="number" step="0.01" class="mt-1 w-full rounded-lg border-slate-300"></label><label class="flex items-center justify-between rounded-lg bg-slate-100 p-3">{{ t('Sanierung einplanen') }}<input v-model="c.inputs.renovationEnabled" type="checkbox" class="rounded text-teal-700"></label><label v-if="c.inputs.renovationEnabled" class="sm:col-span-2">{{ t('Sanierungsbudget (€)') }}<CurrencyInput v-model="c.inputs.renovationBudget" class="mt-1 w-full rounded-lg border-slate-300" /></label></div>
-          <RenovationFundingEditor v-if="c.inputs.renovationEnabled" :calculator="c" :language="props.language" />
+          <RenovationFundingEditor :calculator="c" :language="props.language" />
         </section>
 
         <section v-else-if="step === 1">

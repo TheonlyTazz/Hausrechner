@@ -15,6 +15,8 @@ const remove = index => { c.inputs.renovationFunding.splice(index, 1); };
 <template>
   <section class="mt-4 rounded-xl border border-indigo-200 bg-indigo-50/60 p-3">
     <div><p class="text-xs font-bold uppercase tracking-wide text-indigo-700">{{ t('Förderungen & Zusatzkredite') }}</p><p class="mt-1 text-xs text-slate-500">{{ t('Konditionen sind Modellannahmen und müssen beim Förderinstitut geprüft werden.') }}</p></div>
+    <p class="mt-2 rounded-lg bg-white p-2 text-[11px] text-slate-600">{{ t('KfW 124 kann im Darlehen-Tab unabhängig von einer Sanierung aktiviert werden. KfW 358/359 setzt grundsätzlich eine Zuschusszusage für energetische Einzelmaßnahmen voraus.') }}</p>
+    <p v-if="!c.inputs.renovationEnabled && items.some(item => item.kind === 'grant')" class="mt-2 rounded-lg bg-amber-50 p-2 text-[11px] font-semibold text-amber-800">{{ t('Einmalzuschüsse werden erst bei aktivierter Sanierung vom Sanierungsbudget abgezogen. Förderkredite bleiben aktiv.') }}</p>
     <div class="mt-3 flex flex-wrap gap-2">
       <button v-for="preset in FUNDING_PRESETS" :key="preset.key" type="button" class="rounded-lg border border-indigo-200 bg-white px-2.5 py-2 text-left text-[11px] font-bold text-indigo-900 hover:bg-indigo-100" @click="add(preset.key)">＋ {{ preset.name }}</button>
       <button type="button" class="rounded-lg bg-indigo-700 px-3 py-2 text-[11px] font-bold text-white hover:bg-indigo-600" @click="add('')">＋ {{ t('Eigene Förderung') }}</button>
