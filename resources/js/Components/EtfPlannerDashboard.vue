@@ -1,4 +1,5 @@
 <script setup>
+import { computed, ref, watch } from 'vue';
 import { translate } from '../Composables/useUiPreferences';
 import EtfPlannerChart from './EtfPlannerChart.vue';
 const props = defineProps({ calculator: { type: Object, required: true }, language: { type: String, default: 'de' } });
@@ -7,6 +8,17 @@ const t = key => translate(props.language, key);
 const euro = cents => c.formatCurrency(c.euros(cents));
 const strategyName = strategy => t({ 'debt-first': 'Kredite zuerst', balanced: 'Risikoadjustierte Mischung', 'etf-first': 'ETF zuerst' }[strategy]);
 const phaseDate = month => `${new Date().getFullYear() + Math.floor((month - 1) / 12)} · ${t('Monat')} ${month}`;
+const comparison = () => c.totalWealthComparison.value;
+const minimumRate = result => result.plan.allocation.reduce((sum, row) => sum + row.minimum, 0);
+const duration = months => months ? `${Math.floor(months / 12)} ${t('Jahre')} ${months % 12} ${t('Monat')}` : t('Nicht innerhalb des Horizonts');
+const selectedMonth = ref(1);
+const monthMaximum = computed(() => Math.max(1, c.etfPlan.value.recommended.monthlyAllocations.length));
+const selectedAllocation = computed(() => c.etfPlan.value.recommended.monthlyAllocations[Math.min(monthMaximum.value, Math.max(1, selectedMonth.value)) - 1]);
+watch(monthMaximum, maximum => { selectedMonth.value = Math.min(maximum, Math.max(1, selectedMonth.value)); });
+watch(selectedMonth, value => {
+  const normalized = Math.min(monthMaximum.value, Math.max(1, Math.round(Number(value) || 1)));
+  if (normalized !== value) selectedMonth.value = normalized;
+});
 </script>
 <template>
   <div class="space-y-5">
@@ -15,11 +27,33 @@ const phaseDate = month => `${new Date().getFullYear() + Math.floor((month - 1) 
       <div class="mt-4 grid gap-3 sm:grid-cols-3"><div class="rounded-lg bg-orange-50 p-3"><span class="text-xs text-orange-700">{{ t('Höchster Kreditzins') }}</span><strong class="block text-xl text-orange-900">{{ c.formatPercent(c.etfPlan.value.highestLoanRate) }}</strong></div><div class="rounded-lg bg-indigo-50 p-3"><span class="text-xs text-indigo-700">{{ t('ETF-Erwartung brutto') }}</span><strong class="block text-xl text-indigo-900">{{ c.formatPercent(c.inputs.etfExpectedReturn) }}</strong></div><div class="rounded-lg bg-emerald-50 p-3"><span class="text-xs text-emerald-700">{{ t('ETF risikoadjustiert netto') }}</span><strong class="block text-xl text-emerald-900">{{ c.formatPercent(c.etfPlan.value.riskAdjustedEtfReturn) }}</strong></div></div>
       <p class="mt-3 rounded-lg bg-slate-100 p-3 text-sm font-semibold">{{ c.etfPlan.value.highestLoanRate >= c.etfPlan.value.riskAdjustedEtfReturn ? t('Ergebnis: Zusätzliche Tilgung zuerst, beginnend beim teuersten Kredit.') : t('Ergebnis: Nach den Mindestraten fließt das freie Budget zunächst in den ETF.') }}</p>
       <div v-if="c.etfPlan.value.recommended.monthlyShortfall" class="mt-4 rounded-lg bg-red-50 p-3 text-sm font-semibold text-red-800">{{ t('Das Monatsbudget liegt unter den vertraglichen Mindestraten. Fehlbetrag:') }} {{ euro(c.etfPlan.value.recommended.monthlyShortfall) }}</div>
-      <h3 class="mt-5 text-sm font-bold">{{ t('Verteilung im ersten Monat') }}</h3>
-      <div class="mt-2 overflow-x-auto"><table class="w-full text-sm"><thead class="border-b text-left text-xs uppercase text-slate-500"><tr><th class="py-2">{{ t('Ziel') }}</th><th class="text-right">{{ t('Mindestrate') }}</th><th class="text-right">{{ t('Zusätzliche Tilgung') }}</th><th class="text-right">{{ t('Gesamt') }}</th></tr></thead><tbody><tr v-for="row in c.etfPlan.value.recommended.allocation" :key="row.name" class="border-b border-slate-100"><td class="py-2 font-semibold">{{ t(row.name) }}</td><td class="text-right">{{ euro(row.minimum) }}</td><td class="text-right text-emerald-700">{{ euro(row.extra) }}</td><td class="text-right font-bold">{{ euro(row.minimum + row.extra) }}</td></tr><tr class="bg-indigo-50 text-indigo-900"><td class="py-2 font-bold">ETF</td><td></td><td></td><td class="text-right font-bold">{{ euro(c.etfPlan.value.recommended.firstMonthEtf) }}</td></tr></tbody></table></div>
+      <div class="mt-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><h3 class="text-sm font-bold">{{ t('Monatliche Verteilung') }}</h3><p class="mt-1 text-xs text-slate-500">{{ t('Wähle einen Monat, um die simulierte Verteilung nach Umschichtungen zu sehen.') }}</p></div><label class="text-xs font-semibold text-slate-600">{{ t('Monat') }}<input v-model.number="selectedMonth" type="number" min="1" :max="monthMaximum" class="ml-2 w-24 rounded-lg border-slate-300 text-sm"></label></div>
+      <input v-model.number="selectedMonth" type="range" min="1" :max="monthMaximum" step="1" class="mt-3 w-full accent-indigo-600">
+      <div class="mt-1 flex justify-between text-[11px] text-slate-400"><span>1</span><strong>{{ phaseDate(selectedMonth) }}</strong><span>{{ monthMaximum }}</span></div>
+      <div class="mt-2 overflow-x-auto"><table class="w-full text-sm"><thead class="border-b text-left text-xs uppercase text-slate-500"><tr><th class="py-2">{{ t('Ziel') }}</th><th class="text-right">{{ t('Mindestrate') }}</th><th class="text-right">{{ t('Zusätzliche Tilgung') }}</th><th class="text-right">{{ t('Gesamt') }}</th></tr></thead><tbody><tr v-for="row in selectedAllocation?.loans || []" :key="row.name" class="border-b border-slate-100"><td class="py-2 font-semibold">{{ t(row.name) }}</td><td class="text-right">{{ euro(row.minimum) }}</td><td class="text-right text-emerald-700">{{ euro(row.extra) }}</td><td class="text-right font-bold">{{ euro(row.minimum + row.extra) }}</td></tr><tr class="bg-indigo-50 text-indigo-900"><td class="py-2 font-bold">ETF<span v-if="selectedAllocation?.dedicatedEnergyEtf" class="ml-2 text-[10px] font-normal">{{ t('inkl. Energieeinsparung') }}</span></td><td></td><td></td><td class="text-right font-bold">{{ euro(selectedAllocation?.etf || 0) }}</td></tr><tr v-if="selectedAllocation?.shortfall" class="bg-red-50 text-red-800"><td class="py-2 font-bold" colspan="3">{{ t('Budgetfehlbetrag') }}</td><td class="text-right font-bold">{{ euro(selectedAllocation.shortfall) }}</td></tr></tbody></table></div>
       <h3 class="mt-5 text-sm font-bold">{{ t('Umschichtungsplan bis zur Rente') }}</h3><p class="mt-1 text-xs text-slate-500">{{ t('Nach jeder vollständigen Tilgung wird das freie Monatsbudget automatisch neu verteilt.') }}</p>
       <div class="mt-2 overflow-x-auto"><table class="w-full text-sm"><thead class="border-b text-left text-xs uppercase text-slate-500"><tr><th class="py-2">{{ t('Zeitraum') }}</th><th>{{ t('Priorität für freies Budget') }}</th><th class="text-right">{{ t('Betrag ab Phasenstart') }}</th></tr></thead><tbody><tr v-for="phase in c.etfPlan.value.recommended.phases" :key="`${phase.startMonth}-${phase.target}`" class="border-b border-slate-100"><td class="py-2">{{ phaseDate(phase.startMonth) }} – {{ phaseDate(phase.endMonth) }}</td><td class="font-semibold" :class="phase.target === 'ETF' ? 'text-indigo-700' : 'text-emerald-700'">{{ t(phase.target) }}</td><td class="text-right font-bold">{{ euro(phase.monthlyAmount) }}</td></tr></tbody></table></div>
       <p class="mt-2 text-xs text-amber-700">{{ t('Der Phasenplan unterstellt, dass die dargestellten zusätzlichen Tilgungen vertraglich zulässig sind. Sondertilgungsgrenzen und Vorfälligkeitskosten bitte je Kredit prüfen.') }}</p>
+    </section>
+
+    <section class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between"><div><p class="text-xs font-bold uppercase tracking-wide text-emerald-700">{{ t('Ganzheitliche Vermögensbilanz') }}</p><h2 class="mt-1 text-xl font-bold">{{ t('Mit Sanierung vs. ohne Sanierung') }}</h2><p class="mt-1 text-xs text-slate-500">{{ comparison().years }} {{ t('Jahre') }} · {{ t('nominale Modellwerte') }}</p></div><div class="rounded-xl bg-emerald-50 px-4 py-3 text-right"><span class="text-xs text-emerald-800">{{ t('Differenz echtes Gesamtnettovermögen') }}</span><strong class="block text-2xl text-emerald-900">{{ euro(comparison().withRenovation.totalNetWorth - comparison().withoutRenovation.totalNetWorth) }}</strong></div></div>
+      <div class="mt-5 grid gap-4 lg:grid-cols-2">
+        <article v-for="(result, renovated) in { false: comparison().withoutRenovation, true: comparison().withRenovation }" :key="renovated" class="rounded-xl border p-4" :class="renovated === 'true' ? 'border-emerald-300 bg-emerald-50/30' : 'border-slate-200 bg-slate-50/50'"><h3 class="font-bold" :class="renovated === 'true' ? 'text-emerald-800' : 'text-slate-700'">{{ renovated === 'true' ? t('Mit Sanierung') : t('Ohne Sanierung') }}</h3>
+          <dl class="mt-4 space-y-2 text-sm">
+            <div class="flex justify-between"><dt>{{ t('Kredit-Mindestrate') }}</dt><dd class="font-semibold">{{ euro(minimumRate(result)) }}</dd></div>
+            <div class="flex justify-between"><dt>{{ t('Kreditzinsen bis Rente') }}</dt><dd class="font-semibold text-orange-700">{{ euro(result.plan.totalInterest) }}</dd></div>
+            <div class="flex justify-between"><dt>{{ t('Tilgungsdauer') }}</dt><dd class="font-semibold">{{ duration(result.plan.paidOffMonth) }}</dd></div>
+            <div class="flex justify-between border-t pt-2"><dt>{{ t('ETF-Depot zur Rente') }}</dt><dd class="font-semibold text-indigo-700">{{ euro(result.plan.etfAtRetirement) }}</dd></div>
+            <div class="flex justify-between"><dt>{{ t('Restschuld zur Rente') }}</dt><dd class="font-semibold text-orange-700">{{ euro(result.plan.debtAtRetirement) }}</dd></div>
+            <div class="flex justify-between"><dt>{{ t('Liquides Nettovermögen') }}</dt><dd class="font-bold">{{ euro(result.liquidNetWorth) }}</dd></div>
+            <div class="flex justify-between border-t pt-2"><dt>{{ t('Immobilienwert zur Rente') }}</dt><dd class="font-semibold text-emerald-700">{{ euro(result.propertyValue) }}</dd></div>
+            <div class="flex justify-between rounded-lg bg-emerald-100 px-2 py-2"><dt class="font-bold">{{ t('Echtes Gesamtnettovermögen') }}</dt><dd class="font-bold text-emerald-900">{{ euro(result.totalNetWorth) }}</dd></div>
+          </dl>
+        </article>
+      </div>
+      <div class="mt-4 grid gap-3 sm:grid-cols-3"><div class="rounded-lg bg-indigo-50 p-3"><span class="text-xs text-indigo-700">{{ t('Reinvestierte Energieeinsparung/Monat') }}</span><strong class="block text-lg text-indigo-900">{{ euro(comparison().reinvestedMonthly) }}</strong></div><div class="rounded-lg bg-indigo-50 p-3"><span class="text-xs text-indigo-700">{{ t('ETF-Mehrwert aus Energieeinsparung') }}</span><strong class="block text-lg text-indigo-900">{{ euro(comparison().energyEtfEffect) }}</strong></div><div class="rounded-lg bg-emerald-50 p-3"><span class="text-xs text-emerald-700">{{ t('Wertsteigernder Sanierungsanteil heute') }}</span><strong class="block text-lg text-emerald-900">{{ euro(comparison().valueAddingRenovation) }}</strong></div></div>
+      <p class="mt-4 rounded-lg bg-amber-50 p-3 text-xs text-amber-900">{{ t('Der Immobilienwert ist ein Modellwert und nicht liquide. Sanierungskosten erhöhen den Marktwert nicht zwingend im angenommenen Umfang; Energieeinsparungen hängen von Nutzung, Preisen und Gebäudezustand ab.') }}</p>
     </section>
 
     <section class="grid gap-4 lg:grid-cols-3">
