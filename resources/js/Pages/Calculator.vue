@@ -38,11 +38,12 @@ const inputTabs = [['object', 'Objekt'], ['income', 'Einkommen'], ['household', 
 
     <main class="mx-auto max-w-[1600px] space-y-5 px-4 py-5 lg:px-8">
       <p v-if="sharing.shareMessage.value" class="no-print rounded-lg bg-indigo-50 px-3 py-2 text-center text-xs font-semibold text-indigo-800">{{ sharing.shareMessage.value }}</p>
-      <section class="kpi-grid print-grid grid gap-2 sm:gap-3 xl:grid-cols-5">
+      <section class="kpi-grid print-grid grid gap-2 sm:gap-3 xl:grid-cols-6">
         <template v-for="item in [
           ['Kapitalbedarf', euro(c.totalCapital.value), 'Kauf inkl. Kosten & Sanierung'],
           ['Rate brutto', euro(c.activeScenario.value.grossMonthly), c.inputs.useTargetRate ? 'Zielrate inkl. Miete' : 'vertragliche Raten'],
           ['Rate netto', euro(c.activeScenario.value.netMonthly), languagePreference === 'en' ? `after ${c.formatCurrency(c.inputs.rentalIncome)} cold rent` : `nach ${c.formatCurrency(c.inputs.rentalIncome)} Kaltmiete`],
+          ['Gesamtwohnkosten', euro(c.totalHousingCosts.value), 'Rate + Hausnebenkosten + Rücklage'],
           ['Zinsvorteil WI Bank', euro(c.interestSaved.value), 'Modellrechnung bis Ablösung'],
           ['Voraussichtlich schuldenfrei', c.payoffYear.value || (languagePreference === 'en' ? '> 50 years' : '> 50 Jahre'), c.payoffAge.value ? (languagePreference === 'en' ? `at approx. age ${c.payoffAge.value.toFixed(1)}` : `mit ca. ${c.payoffAge.value.toFixed(1)} Jahren`) : 'Rate prüfen'],
         ]" :key="item[0]"><article v-if="item[0] !== 'Rate netto' || Number(c.inputs.rentalIncome) > 0" class="print-avoid rounded-xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4"><p class="text-[10px] font-semibold uppercase tracking-wide text-slate-500 sm:text-xs">{{ t(item[0]) }}</p><p class="mt-1 text-lg font-bold text-slate-950 sm:text-2xl">{{ item[1] }}</p><p class="mt-1 hidden text-xs text-slate-500 sm:block">{{ t(item[2]) }}</p></article></template>
@@ -68,7 +69,7 @@ const inputTabs = [['object', 'Objekt'], ['income', 'Einkommen'], ['household', 
             <div class="mt-3 grid grid-cols-2 gap-3 text-xs font-semibold text-slate-600">
               <label>{{ t('Haushaltsnetto (€)') }}<CurrencyInput v-model="c.inputs.householdNetIncome" class="mt-1 w-full rounded-lg border-slate-300 text-sm" /></label>
               <label>{{ t('Sonstige Einnahmen (€)') }}<CurrencyInput v-model="c.inputs.otherMonthlyIncome" class="mt-1 w-full rounded-lg border-slate-300 text-sm" /></label>
-              <label>{{ t('Lebenshaltung (€)') }}<CurrencyInput v-model="c.inputs.livingCosts" class="mt-1 w-full rounded-lg border-slate-300 text-sm" /></label>
+              <label>{{ t('Lebenshaltung ohne Wohnen (€)') }}<CurrencyInput v-model="c.inputs.livingCosts" class="mt-1 w-full rounded-lg border-slate-300 text-sm" /></label>
               <label>{{ t('Andere Verpflichtungen (€)') }}<CurrencyInput v-model="c.inputs.otherCommitments" class="mt-1 w-full rounded-lg border-slate-300 text-sm" /></label>
               <label class="col-span-2">{{ t('Sicherheitspuffer (€)') }}<CurrencyInput v-model="c.inputs.monthlySafetyBuffer" class="mt-1 w-full rounded-lg border-slate-300 text-sm" /></label>
             </div>
@@ -76,8 +77,9 @@ const inputTabs = [['object', 'Objekt'], ['income', 'Einkommen'], ['household', 
               <div class="flex justify-between"><span>{{ t('Einnahmen inkl. Kaltmiete') }}</span><strong>{{ euro(c.totalHouseholdIncome.value) }}</strong></div>
               <div class="flex justify-between"><span>{{ t('Tragbare eigene Rate') }}</span><strong>{{ euro(c.availableOwnRate.value) }}</strong></div>
               <div class="mt-1 flex justify-between"><span>{{ t('Aktuell geplante Nettorate') }}</span><strong>{{ euro(c.activeScenario.value.netMonthly) }}</strong></div>
+              <div class="mt-1 flex justify-between font-semibold"><span>{{ t('Echte Gesamtwohnkosten') }}</span><strong>{{ euro(c.totalHousingCosts.value) }}</strong></div>
               <div class="mt-1 flex justify-between text-amber-800"><span>{{ t('Bank-Sicht nach Mietabschlag') }}</span><strong>{{ euro(c.bankNetMonthly.value) }}</strong></div>
-              <div class="mt-1 flex justify-between"><span>{{ t('Rate / Nettoeinkommen') }}</span><strong>{{ c.housingCostRatio.value === null ? '–' : c.formatPercent(c.housingCostRatio.value * 100) }}</strong></div>
+              <div class="mt-1 flex justify-between"><span>{{ t('Gesamtwohnkosten / Nettoeinkommen') }}</span><strong>{{ c.housingCostRatio.value === null ? '–' : c.formatPercent(c.housingCostRatio.value * 100) }}</strong></div>
               <div class="mt-2 flex justify-between border-t border-teal-200 pt-2" :class="c.monthlySurplus.value < 0 ? 'text-red-700' : 'text-teal-800'"><span>{{ t(c.monthlySurplus.value < 0 ? 'Monatliche Unterdeckung' : 'Verbleibender Puffer') }}</span><strong>{{ euro(Math.abs(c.monthlySurplus.value)) }}</strong></div>
               <button type="button" class="mt-3 w-full rounded-lg bg-teal-800 px-3 py-2 text-xs font-bold text-white hover:bg-teal-700" @click="c.applyAffordableRate">{{ t('Als Zielrate übernehmen') }}</button>
             </div>
@@ -95,6 +97,11 @@ const inputTabs = [['object', 'Objekt'], ['income', 'Einkommen'], ['household', 
               <label v-if="!c.wiBankAreaEligible.value" class="mt-2 flex gap-2 text-xs"><input v-model="c.inputs.wiBankOverride" type="checkbox"> {{ t('Einzelfallprüfung / Dispenzantrag annehmen') }}</label>
             </div>
             <div class="mt-3 grid grid-cols-2 gap-3"><label class="text-xs font-semibold text-slate-600">{{ t('Eigenkapital (€)') }}<CurrencyInput v-model="c.inputs.equity" class="mt-1 w-full rounded-lg border-slate-300 text-sm" /></label><label class="text-xs font-semibold text-slate-600">{{ t('Kaltmiete/Monat (€)') }}<CurrencyInput v-model="c.inputs.rentalIncome" class="mt-1 w-full rounded-lg border-slate-300 text-sm" /><span class="mt-1 block font-normal text-amber-700">{{ t('Bank-Ansatz: ca.') }} {{ euro(c.bankRentalIncome.value) }}</span></label><label class="text-xs font-semibold text-slate-600">{{ t('Mietabschlag Bank (%)') }}<input v-model.number="c.inputs.rentalIncomeHaircutPercent" type="number" min="0" max="100" step="5" class="mt-1 w-full rounded-lg border-slate-300 text-sm"><span class="mt-1 block font-normal text-slate-400">{{ t('Modellannahme, bankabhängig') }}</span></label><label class="text-xs font-semibold text-slate-600">{{ t('Aktuelles Alter') }}<input v-model.number="c.inputs.currentAge" type="number" min="18" max="90" class="mt-1 w-full rounded-lg border-slate-300 text-sm"></label><label class="text-xs font-semibold text-slate-600">{{ t('Diagramm (Jahre)') }}<select v-model.number="c.inputs.chartYears" class="mt-1 w-full rounded-lg border-slate-300 text-sm"><option v-for="n in [10, 20, 30, 40, 50]" :key="n" :value="n">{{ n }}</option></select></label></div>
+            <div class="mt-3 grid grid-cols-2 gap-3">
+              <label class="text-xs font-semibold text-slate-600">{{ t('Haus-Nebenkosten/Monat (€)') }}<CurrencyInput v-model="c.inputs.monthlyHousingUtilities" class="mt-1 w-full rounded-lg border-slate-300 text-sm" /><span class="mt-1 block font-normal text-slate-400">{{ t('z. B. Energie, Wasser, Grundsteuer und Versicherungen') }}</span></label>
+              <label class="text-xs font-semibold text-slate-600">{{ t('Instandhaltungsrücklage/Monat (€)') }}<CurrencyInput v-model="c.inputs.monthlyMaintenanceReserve" class="mt-1 w-full rounded-lg border-slate-300 text-sm" /><span class="mt-1 block font-normal text-slate-400">{{ t('Monatliche Rücklage für Reparaturen und Werterhalt') }}</span></label>
+            </div>
+            <div class="mt-3 rounded-lg bg-indigo-50 p-3 text-sm text-indigo-950"><div class="flex justify-between"><span>{{ t('Echte Gesamtwohnkosten') }}</span><strong>{{ euro(c.totalHousingCosts.value) }}</strong></div><p class="mt-1 text-xs text-indigo-700">{{ t('Nettokreditrate inklusive Haus-Nebenkosten und Instandhaltungsrücklage.') }}</p></div>
           </section>
 
           <section v-show="activeInput === 'loans'" class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">

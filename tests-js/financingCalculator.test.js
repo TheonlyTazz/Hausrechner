@@ -42,6 +42,15 @@ describe('financing scenarios', () => {
     expect(Number.isInteger(schedule.totalInterest)).toBe(true);
     expect(schedule.rows.every(row => Number.isInteger(row.balance) && row.balance >= 0)).toBe(true);
   });
+
+  test('housing utilities and maintenance reserve affect affordability and total housing costs', () => {
+    const calculator = useFinancingCalculator();
+    expect(calculator.totalHousingCosts.value).toBe(calculator.activeScenario.value.netMonthly + 50000);
+    const available = calculator.availableOwnRate.value;
+    calculator.inputs.monthlyHousingUtilities += 100;
+    expect(calculator.availableOwnRate.value).toBe(available - 10000);
+    expect(calculator.totalHousingCosts.value).toBe(calculator.activeScenario.value.netMonthly + 60000);
+  });
 });
 
 test('share payload stores only values changed from defaults', () => {

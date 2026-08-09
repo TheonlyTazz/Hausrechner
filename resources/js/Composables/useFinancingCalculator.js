@@ -88,6 +88,8 @@ export const DEFAULT_INPUTS = Object.freeze({
     livingCosts: 1800,
     otherCommitments: 0,
     monthlySafetyBuffer: 500,
+    monthlyHousingUtilities: 350,
+    monthlyMaintenanceReserve: 150,
     wiBankEnabled: true,
     wiBankOverride: false,
     wiBankAmount: 100000,
@@ -131,7 +133,8 @@ export function useFinancingCalculator(locale = { value: 'de' }) {
   const bankRentalIncome = computed(() => Math.round(roundCent(inputs.rentalIncome) * (1 - Number(inputs.rentalIncomeHaircutPercent || 0) / 100)));
   const availableOwnRate = computed(() => Math.max(0,
     roundCent(inputs.householdNetIncome) + roundCent(inputs.otherMonthlyIncome)
-      - roundCent(inputs.livingCosts) - roundCent(inputs.otherCommitments) - roundCent(inputs.monthlySafetyBuffer),
+      - roundCent(inputs.livingCosts) - roundCent(inputs.otherCommitments) - roundCent(inputs.monthlySafetyBuffer)
+      - roundCent(inputs.monthlyHousingUtilities) - roundCent(inputs.monthlyMaintenanceReserve),
   ));
 
   function buildScenario({ wiBank = inputs.wiBankEnabled, renovationOn = inputs.renovationEnabled } = {}) {
@@ -160,9 +163,11 @@ export function useFinancingCalculator(locale = { value: 'de' }) {
   const payoffYear = computed(() => payoffMonths.value ? new Date().getFullYear() + Math.ceil(payoffMonths.value / 12) : null);
   const monthlySurplus = computed(() => availableOwnRate.value - activeScenario.value.netMonthly);
   const bankNetMonthly = computed(() => Math.max(0, activeScenario.value.grossMonthly - bankRentalIncome.value));
+  const totalHousingCosts = computed(() => activeScenario.value.netMonthly
+    + roundCent(inputs.monthlyHousingUtilities) + roundCent(inputs.monthlyMaintenanceReserve));
   const housingCostRatio = computed(() => {
     const incomeWithoutRent = roundCent(inputs.householdNetIncome) + roundCent(inputs.otherMonthlyIncome);
-    return incomeWithoutRent > 0 ? activeScenario.value.netMonthly / incomeWithoutRent : null;
+    return incomeWithoutRent > 0 ? totalHousingCosts.value / incomeWithoutRent : null;
   });
   const applyAffordableRate = () => {
     inputs.targetMonthlyRate = euros(availableOwnRate.value);
@@ -209,7 +214,7 @@ export function useFinancingCalculator(locale = { value: 'de' }) {
   return {
     inputs, formatCurrency, formatPercent, netLivingArea, wiBankAreaEligible, wiBankEligible,
     transferTax, ancillaryCosts, totalCapital, hessenClaim, hessenGrant, hessenAnnual,
-    totalHouseholdIncome, bankRentalIncome, availableOwnRate, monthlySurplus, bankNetMonthly, housingCostRatio, applyAffordableRate, hessenRouting,
+    totalHouseholdIncome, bankRentalIncome, availableOwnRate, monthlySurplus, bankNetMonthly, totalHousingCosts, housingCostRatio, applyAffordableRate, hessenRouting,
     activeScenario, scenarioWithWi, scenarioWithoutWi, scenarioRenovated, scenarioNoRenovation,
     interestSaved, payoffAge, payoffYear, targetProjection, targetWithWi, targetWithoutWi, annualChart, debtChart, euros,
   };

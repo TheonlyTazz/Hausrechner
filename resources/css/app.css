@@ -19,13 +19,13 @@
 .dark .bg-red-50 { background-color: #450a0a !important; }
 .dark .text-red-900 { color: #fecaca !important; }
 .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-@media (min-width: 1280px) { .kpi-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
+@media (min-width: 1280px) { .kpi-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
 
 @media print {
   @page { size: A4 landscape; margin: 9mm; }
   body { background: white !important; font-size: 10px; }
   .no-print { display: none !important; }
-  .print-grid { display: grid !important; grid-template-columns: repeat(5, minmax(0, 1fr)) !important; gap: 6px !important; }
+  .print-grid { display: grid !important; grid-template-columns: repeat(6, minmax(0, 1fr)) !important; gap: 6px !important; }
   .print-avoid { break-inside: avoid; box-shadow: none !important; }
   .print-full { grid-column: 1 / -1 !important; }
   main { max-width: none !important; padding: 0 !important; }
