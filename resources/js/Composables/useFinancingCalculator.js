@@ -130,8 +130,8 @@ export function useFinancingCalculator(locale = { value: 'de' }) {
   const renovationGrants = computed(() => renovationFunding.value.filter(item => item.kind === 'grant'));
   const renovationLoans = computed(() => renovationFunding.value.filter(item => item.kind === 'credit'));
   const renovationGrantTotal = computed(() => Math.min(roundCent(inputs.renovationBudget), renovationGrants.value.reduce((sum, item) => sum + roundCent(item.amount), 0)));
-  const renovation = computed(() => inputs.renovationEnabled ? Math.max(0, roundCent(inputs.renovationBudget) - renovationGrantTotal.value) : 0);
-  const totalCapital = computed(() => roundCent(inputs.purchasePrice) + ancillaryCosts.value + renovation.value);
+  const totalCapital = computed(() => roundCent(inputs.purchasePrice) + ancillaryCosts.value + (inputs.renovationEnabled ? roundCent(inputs.renovationBudget) : 0));
+  const netCapitalRequired = computed(() => Math.max(0, totalCapital.value - (inputs.renovationEnabled ? renovationGrantTotal.value : 0)));
   const hessenClaim = computed(() => roundCent(inputs.buyers * 10000 + inputs.children * 5000));
   const hessenGrant = computed(() => Math.min(hessenClaim.value, transferTax.value));
   const hessenAnnual = computed(() => Math.floor(hessenGrant.value / 10));
@@ -224,7 +224,7 @@ export function useFinancingCalculator(locale = { value: 'de' }) {
 
   return {
     inputs, formatCurrency, formatPercent, netLivingArea, wiBankAreaEligible, wiBankEligible,
-    transferTax, ancillaryCosts, totalCapital, renovationFunding, renovationGrants, renovationLoans, renovationGrantTotal, hessenClaim, hessenGrant, hessenAnnual,
+    transferTax, ancillaryCosts, totalCapital, netCapitalRequired, renovationFunding, renovationGrants, renovationLoans, renovationGrantTotal, hessenClaim, hessenGrant, hessenAnnual,
     totalHouseholdIncome, bankRentalIncome, availableOwnRate, monthlySurplus, bankNetMonthly, totalHousingCosts, housingCostRatio, applyAffordableRate, hessenRouting,
     activeScenario, scenarioWithWi, scenarioWithoutWi, scenarioRenovated, scenarioRenovatedWithoutFunding, scenarioNoRenovation,
     interestSaved, renovationFundingInterestSaved, payoffAge, payoffYear, targetProjection, targetWithWi, targetWithoutWi, annualChart, debtChart, euros,

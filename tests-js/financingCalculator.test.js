@@ -94,6 +94,26 @@ describe('financing scenarios', () => {
     expect(calculator.activeScenario.value.loans.some(loan => loan.name === 'KfW 270')).toBe(false);
     expect(calculator.scenarioRenovated.value.loans.some(loan => loan.name === 'KfW 270')).toBe(true);
   });
+
+  test('BAFA example reconciles gross need, equity, grant and every loan without a double deduction', () => {
+    const calculator = useFinancingCalculator();
+    Object.assign(calculator.inputs, {
+      purchasePrice: 325000, equity: 35000, renovationEnabled: true, renovationBudget: 105000,
+      wiBankAmount: 140000, kfwAmount: 100000, employerEnabled: true, employerAmount: 50000,
+    });
+    calculator.inputs.renovationFunding.push(
+      { id: '270', name: 'KfW 270', kind: 'credit', amount: 20000, interestRate: 3.8, interestOnlyYears: 1, termYears: 20 },
+      { id: '261', name: 'KfW 261', kind: 'credit', amount: 85000, interestRate: 2.5, interestOnlyYears: 1, termYears: 30 },
+      { id: 'bafa', name: 'BAFA', kind: 'grant', amount: 4000 },
+    );
+    const scenario = calculator.activeScenario.value;
+    expect(calculator.totalCapital.value).toBe(46_597_750);
+    expect(scenario.required).toBe(46_197_750);
+    expect(scenario.bank).toBe(3_197_750);
+    expect(scenario.debt).toBe(42_697_750);
+    expect(scenario.debt + calculator.inputs.equity * 100 + scenario.renovationGrant).toBe(calculator.totalCapital.value);
+    expect(scenario.loans.reduce((sum, loan) => sum + loan.principal, 0)).toBe(scenario.debt);
+  });
 });
 
 test('share payload uses a compact sparse positional schema', () => {

@@ -42,5 +42,8 @@ export default {
   'Zinsvorteil durch Förderung': 'Interest benefit from subsidies',
   'Förderkredit': 'Subsidized loan',
   'Sanierungszuschüsse abgezogen': 'Renovation grants deducted',
+  'Bruttokapitalbedarf': 'Gross capital required',
+  'Eigenkapital abgezogen': 'Equity deducted',
+  'Nettokapitalbedarf': 'Net capital required',
   'Unverbindliche Modellrechnung, keine Förderzusage oder Finanzberatung. Konditionen, Förderfähigkeit, Sondertilgungsrechte und WoFlV-Berechnung vor Antragstellung mit Förderinstitut und Bank prüfen.': 'Non-binding model calculation, not a subsidy approval or financial advice. Verify terms, eligibility, special repayment rights and WoFlV calculation with the funding institution and bank before applying.',
 };
