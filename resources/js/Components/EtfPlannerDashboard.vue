@@ -36,7 +36,7 @@ watch(selectedMonth, value => {
       <p class="mt-2 text-xs text-amber-700">{{ t('Der Phasenplan unterstellt, dass die dargestellten zusätzlichen Tilgungen vertraglich zulässig sind. Sondertilgungsgrenzen und Vorfälligkeitskosten bitte je Kredit prüfen.') }}</p>
     </section>
 
-    <section class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+    <section v-if="c.inputs.renovationEnabled" class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
       <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between"><div><p class="text-xs font-bold uppercase tracking-wide text-emerald-700">{{ t('Ganzheitliche Vermögensbilanz') }}</p><h2 class="mt-1 text-xl font-bold">{{ t('Mit Sanierung vs. ohne Sanierung') }}</h2><p class="mt-1 text-xs text-slate-500">{{ comparison().years }} {{ t('Jahre') }} · {{ t('nominale Modellwerte') }}</p></div><div class="rounded-xl bg-emerald-50 px-4 py-3 text-right"><span class="text-xs text-emerald-800">{{ t('Differenz echtes Gesamtnettovermögen') }}</span><strong class="block text-2xl text-emerald-900">{{ euro(comparison().withRenovation.totalNetWorth - comparison().withoutRenovation.totalNetWorth) }}</strong></div></div>
       <div class="mt-5 grid gap-4 lg:grid-cols-2">
         <article v-for="(result, renovated) in { false: comparison().withoutRenovation, true: comparison().withRenovation }" :key="renovated" class="rounded-xl border p-4" :class="renovated === 'true' ? 'border-emerald-300 bg-emerald-50/30' : 'border-slate-200 bg-slate-50/50'"><h3 class="font-bold" :class="renovated === 'true' ? 'text-emerald-800' : 'text-slate-700'">{{ renovated === 'true' ? t('Mit Sanierung') : t('Ohne Sanierung') }}</h3>
