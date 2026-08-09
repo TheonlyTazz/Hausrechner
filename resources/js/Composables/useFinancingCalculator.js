@@ -1,7 +1,7 @@
 import { computed, reactive } from 'vue';
 import { buildLoanPortfolio, scenarioStrategies } from './financingStrategies.js';
-import { sanitizeFundingList } from './renovationFunding.ts';
-import { buildEtfPlan } from './etfPlanner.ts';
+import { resolveFundingAmounts } from './renovationFunding.ts';
+import { buildEtfPlan, buildTotalWealthComparison } from './etfPlanner.ts';
 
 const roundCent = value => Math.round(Number(value || 0) * 100);
 const euros = cents => Math.round(cents) / 100;
@@ -124,6 +124,10 @@ export const DEFAULT_INPUTS = Object.freeze({
     etfRiskDiscount: 2,
     etfInflation: 2,
     etfWithdrawalRate: 3.5,
+    monthlyEnergySavings: 150,
+    renovationValueAddingShare: 70,
+    propertyAppreciation: 1.5,
+    energyReinvestmentShare: 100,
 });
 
 export function useFinancingCalculator(locale = { value: 'de' }) {
@@ -136,7 +140,7 @@ export function useFinancingCalculator(locale = { value: 'de' }) {
   const wiBankEligible = computed(() => wiBankAreaEligible.value || inputs.wiBankOverride);
   const transferTax = computed(() => roundCent(inputs.purchasePrice * inputs.transferTaxPercent / 100));
   const ancillaryCosts = computed(() => roundCent(inputs.purchasePrice * (inputs.transferTaxPercent + inputs.notaryPercent + inputs.brokerPercent) / 100));
-  const renovationFunding = computed(() => sanitizeFundingList(inputs.renovationFunding));
+  const renovationFunding = computed(() => resolveFundingAmounts(inputs.renovationFunding, inputs.renovationBudget));
   const renovationGrants = computed(() => renovationFunding.value.filter(item => item.kind === 'grant'));
   const renovationLoans = computed(() => renovationFunding.value.filter(item => item.kind === 'credit'));
   const renovationGrantTotal = computed(() => Math.min(roundCent(inputs.renovationBudget), renovationGrants.value.reduce((sum, item) => sum + roundCent(item.amount), 0)));
@@ -175,7 +179,7 @@ export function useFinancingCalculator(locale = { value: 'de' }) {
   const scenarioWithoutWi = computed(() => buildScenario(scenarioStrategies.withoutWiBank(inputs)));
   const scenarioRenovated = computed(() => buildScenario(scenarioStrategies.renovated(inputs)));
   const scenarioRenovatedWithoutFunding = computed(() => buildScenario({ ...scenarioStrategies.renovated(inputs), includeRenovationFunding: false }));
-  const scenarioNoRenovation = computed(() => buildScenario(scenarioStrategies.unrenovated(inputs)));
+  const scenarioNoRenovation = computed(() => buildScenario({ ...scenarioStrategies.unrenovated(inputs), includeRenovationFunding: false }));
   const activeScenario = computed(() => buildScenario());
   const interestSaved = computed(() => Math.max(0, scenarioWithoutWi.value.schedule.totalInterest - scenarioWithWi.value.schedule.totalInterest));
   const renovationFundingInterestSaved = computed(() => Math.max(0, scenarioRenovatedWithoutFunding.value.schedule.totalInterest - scenarioRenovated.value.schedule.totalInterest));
@@ -236,12 +240,20 @@ export function useFinancingCalculator(locale = { value: 'de' }) {
     existingCapital: Number(inputs.etfExistingCapital), expectedReturn: Number(inputs.etfExpectedReturn), annualCosts: Number(inputs.etfAnnualCosts),
     taxRate: Number(inputs.etfTaxRate), riskDiscount: Number(inputs.etfRiskDiscount), inflation: Number(inputs.etfInflation), withdrawalRate: Number(inputs.etfWithdrawalRate),
   }, hessenAnnual.value));
+  const totalWealthComparison = computed(() => buildTotalWealthComparison(scenarioRenovated.value.loans, scenarioNoRenovation.value.loans, {
+    currentAge: Number(inputs.currentAge), retirementAge: Number(inputs.retirementAge), monthlyBudget: Number(inputs.etfMonthlyBudget),
+    existingCapital: Number(inputs.etfExistingCapital), expectedReturn: Number(inputs.etfExpectedReturn), annualCosts: Number(inputs.etfAnnualCosts),
+    taxRate: Number(inputs.etfTaxRate), riskDiscount: Number(inputs.etfRiskDiscount), inflation: Number(inputs.etfInflation), withdrawalRate: Number(inputs.etfWithdrawalRate),
+  }, {
+    purchasePrice: Number(inputs.purchasePrice), renovationBudget: Number(inputs.renovationBudget), valueAddingShare: Number(inputs.renovationValueAddingShare),
+    propertyAppreciation: Number(inputs.propertyAppreciation), monthlyEnergySavings: Number(inputs.monthlyEnergySavings), energyReinvestmentShare: Number(inputs.energyReinvestmentShare),
+  }, hessenAnnual.value));
 
   return {
     inputs, formatCurrency, formatPercent, netLivingArea, wiBankAreaEligible, wiBankEligible,
     transferTax, ancillaryCosts, totalCapital, netCapitalRequired, renovationFunding, renovationGrants, renovationLoans, renovationGrantTotal, hessenClaim, hessenGrant, hessenAnnual,
     totalHouseholdIncome, bankRentalIncome, availableOwnRate, monthlySurplus, bankNetMonthly, totalHousingCosts, housingCostRatio, applyAffordableRate, hessenRouting,
     activeScenario, scenarioWithWi, scenarioWithoutWi, scenarioRenovated, scenarioRenovatedWithoutFunding, scenarioNoRenovation,
-    interestSaved, renovationFundingInterestSaved, payoffAge, payoffYear, targetProjection, targetWithWi, targetWithoutWi, annualChart, debtChart, etfPlan, euros,
+    interestSaved, renovationFundingInterestSaved, payoffAge, payoffYear, targetProjection, targetWithWi, targetWithoutWi, annualChart, debtChart, etfPlan, totalWealthComparison, euros,
   };
 }

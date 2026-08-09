@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest';
 import { useFinancingCalculator } from '../resources/js/Composables/useFinancingCalculator.js';
 import { buildSharePayload, compressSharePayload, decodeSharePayload, decompressSharePayload, encodeSharePayload, expandSharePayload } from '../resources/js/Composables/useShareableState.js';
-import { buildEtfPlan, simulateEtfStrategy } from '../resources/js/Composables/etfPlanner.ts';
+import { buildEtfPlan, buildTotalWealthComparison, simulateEtfStrategy } from '../resources/js/Composables/etfPlanner.ts';
 
 describe('financing scenarios', () => {
   test('WI Bank strategy reduces the main bank allocation and total interest', () => {
@@ -183,6 +183,8 @@ describe('ETF and repayment planner', () => {
     expect(result.allocation.reduce((sum, row) => sum + row.minimum, 0)).toBeGreaterThan(0);
     expect(result.firstMonthEtf).toBeGreaterThan(0);
     expect(result.totalContributions).toBeGreaterThan(result.firstMonthEtf);
+    expect(result.monthlyAllocations).toHaveLength(12);
+    expect(result.monthlyAllocations[0].etf).toBe(result.firstMonthEtf);
   });
 
   test('planner recommends the risk-adjusted strategy and still exposes the raw projected maximum', () => {
@@ -208,11 +210,42 @@ describe('ETF and repayment planner', () => {
     expect(plan.recommended.phases[0].target).toBe('KfW 124');
     expect(plan.recommended.phases.some(phase => phase.target === 'Main bank')).toBe(true);
     expect(plan.recommended.phases.some(phase => phase.target === 'ETF')).toBe(true);
+    expect(plan.recommended.monthlyAllocations.some(month => month.loans.some(row => row.name === 'Main bank' && row.extra > 0))).toBe(true);
   });
 
   test('budget below contractual payments is reported as a shortfall', () => {
     const result = simulateEtfStrategy(loans, { ...inputs, monthlyBudget: 100 }, 'balanced');
     expect(result.monthlyShortfall).toBeGreaterThan(0);
     expect(result.firstMonthEtf).toBe(0);
+    expect(result.monthlyAllocations[0].shortfall).toBeGreaterThan(0);
+  });
+
+  test('shows dedicated monthly ETF savings separately in every selected month', () => {
+    const result = simulateEtfStrategy(loans, { ...inputs, monthlyAdditionalEtf: 150 }, 'balanced');
+    expect(result.monthlyAllocations.every(month => month.dedicatedEnergyEtf === 15000)).toBe(true);
+  });
+});
+
+describe('holistic property wealth comparison', () => {
+  const planner = { currentAge: 40, retirementAge: 50, monthlyBudget: 1800, existingCapital: 0, expectedReturn: 6, annualCosts: 0.2, taxRate: 25, riskDiscount: 2, inflation: 2, withdrawalRate: 3.5 };
+  const loan = [{ name: 'Mortgage', principal: 10000000, rate: 3, payment: 60000 }];
+
+  test('adds the value-adding renovation share to the appreciated property value', () => {
+    const result = buildTotalWealthComparison(loan, loan, planner, { purchasePrice: 300000, renovationBudget: 50000, valueAddingShare: 70, propertyAppreciation: 0, monthlyEnergySavings: 0, energyReinvestmentShare: 100 });
+    expect(result.withRenovation.propertyValue).toBe(33500000);
+    expect(result.withoutRenovation.propertyValue).toBe(30000000);
+    expect(result.valueAddingRenovation).toBe(3500000);
+  });
+
+  test('invests dedicated energy savings in the ETF without using them for debt repayment', () => {
+    const result = buildTotalWealthComparison(loan, loan, planner, { purchasePrice: 300000, renovationBudget: 0, valueAddingShare: 70, propertyAppreciation: 0, monthlyEnergySavings: 150, energyReinvestmentShare: 100 });
+    expect(result.reinvestedMonthly).toBe(15000);
+    expect(result.energyEtfEffect).toBeGreaterThan(150 * 12 * 10 * 100);
+    expect(result.withRenovation.plan.debtAtRetirement).toBe(result.withoutRenovation.plan.debtAtRetirement);
+  });
+
+  test('calculates total net worth as property plus ETF less debt', () => {
+    const result = buildTotalWealthComparison(loan, loan, planner, { purchasePrice: 300000, renovationBudget: 50000, valueAddingShare: 70, propertyAppreciation: 1.5, monthlyEnergySavings: 150, energyReinvestmentShare: 100 });
+    expect(result.withRenovation.totalNetWorth).toBe(result.withRenovation.propertyValue + result.withRenovation.plan.etfAtRetirement - result.withRenovation.plan.debtAtRetirement);
   });
 });

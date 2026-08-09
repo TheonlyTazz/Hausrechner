@@ -64,7 +64,7 @@ const inputTabs = [['object', 'Objekt'], ['income', 'Einkommen'], ['household', 
               <div class="rounded-lg bg-slate-50 p-2 text-xs"><span class="text-slate-500">{{ t('Nebenkosten') }}</span><strong class="block">{{ euro(c.ancillaryCosts.value) }}</strong></div>
             </div>
             <label class="mt-4 flex items-center justify-between rounded-lg bg-slate-100 p-3 text-sm font-semibold"><span>{{ t(c.inputs.renovationEnabled ? 'Mit Sanierung' : 'Null-Sanierung') }}</span><input v-model="c.inputs.renovationEnabled" type="checkbox" class="rounded text-teal-700"></label>
-            <label v-if="c.inputs.renovationEnabled" class="mt-2 block text-xs font-semibold text-slate-600">{{ t('Sanierungsbudget (€)') }}<CurrencyInput v-model="c.inputs.renovationBudget" class="mt-1 w-full rounded-lg border-slate-300 text-sm" /></label>
+            <label v-if="c.inputs.renovationEnabled || c.inputs.renovationFunding.some(item => ['bafa', 'kfw358'].includes(item.preset) && item.autoCalculate)" class="mt-2 block text-xs font-semibold text-slate-600">{{ t('Sanierungsbudget / förderfähige Kosten (€)') }}<CurrencyInput v-model="c.inputs.renovationBudget" class="mt-1 w-full rounded-lg border-slate-300 text-sm" /><span class="mt-1 block text-[11px] font-normal text-slate-500">{{ t('Getrennt vom Kaufpreis; für automatische BAFA- und KfW-358/359-Modellwerte.') }}</span></label>
             <RenovationFundingEditor :calculator="c" :language="languagePreference" />
           </section>
 
