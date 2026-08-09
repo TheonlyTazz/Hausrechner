@@ -185,10 +185,18 @@ describe('ETF and repayment planner', () => {
     expect(result.totalContributions).toBeGreaterThan(result.firstMonthEtf);
   });
 
-  test('planner compares all three strategies and returns the modeled maximum', () => {
+  test('planner recommends the risk-adjusted strategy and still exposes the raw projected maximum', () => {
     const plan = buildEtfPlan(loans, inputs);
     expect(plan.results.map(result => result.strategy)).toEqual(['debt-first', 'balanced', 'etf-first']);
-    expect(plan.recommended.netAssets).toBe(Math.max(...plan.results.map(result => result.netAssets)));
+    expect(plan.recommended.strategy).toBe('balanced');
+    expect(plan.projectedMaximum.netAssets).toBe(Math.max(...plan.results.map(result => result.netAssets)));
+  });
+
+  test('a 3.5 percent loan is repaid before a risky 6 percent ETF under default adjustments', () => {
+    const plan = buildEtfPlan([{ name: 'Mortgage', principal: 20000000, rate: 3.5, payment: 90000 }], { ...inputs, expectedReturn: 6, annualCosts: 0.2, taxRate: 26.375, riskDiscount: 2 });
+    expect(plan.riskAdjustedEtfReturn).toBeLessThan(3.5);
+    expect(plan.recommended.allocation[0].extra).toBeGreaterThan(0);
+    expect(plan.recommended.firstMonthEtf).toBe(0);
   });
 
   test('budget below contractual payments is reported as a shortfall', () => {

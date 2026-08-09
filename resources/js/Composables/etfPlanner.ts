@@ -14,7 +14,7 @@ export function simulateEtfStrategy(sourceLoans: PlannerLoan[], inputs: EtfPlann
   const loans = sourceLoans.map(loan => ({ ...loan, balance: loan.principal }));
   const budget = cents(inputs.monthlyBudget);
   const monthlyEtfRate = annualToMonthly(inputs.expectedReturn - inputs.annualCosts);
-  const riskAdjustedReturn = inputs.expectedReturn - inputs.annualCosts - inputs.riskDiscount;
+  const riskAdjustedReturn = Math.max(0, (inputs.expectedReturn - inputs.annualCosts) * (1 - Math.max(0, inputs.taxRate) / 100) - inputs.riskDiscount);
   let etf = cents(inputs.existingCapital);
   let contributions = etf;
   let totalInterest = 0;
@@ -91,6 +91,9 @@ export function simulateEtfStrategy(sourceLoans: PlannerLoan[], inputs: EtfPlann
 
 export function buildEtfPlan(loans: PlannerLoan[], inputs: EtfPlannerInputs, hessenAnnual = 0) {
   const results = (['debt-first', 'balanced', 'etf-first'] as EtfStrategy[]).map(strategy => simulateEtfStrategy(loans, inputs, strategy, hessenAnnual));
-  const recommended = results.reduce((best, result) => result.netAssets > best.netAssets ? result : best);
-  return { results, recommended };
+  const recommended = results.find(result => result.strategy === 'balanced') as EtfPlanResult;
+  const projectedMaximum = results.reduce((best, result) => result.netAssets > best.netAssets ? result : best);
+  const riskAdjustedEtfReturn = Math.max(0, (inputs.expectedReturn - inputs.annualCosts) * (1 - Math.max(0, inputs.taxRate) / 100) - inputs.riskDiscount);
+  const highestLoanRate = Math.max(0, ...loans.filter(loan => loan.principal > 0).map(loan => loan.rate));
+  return { results, recommended, projectedMaximum, riskAdjustedEtfReturn, highestLoanRate };
 }

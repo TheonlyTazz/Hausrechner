@@ -20,6 +20,7 @@ const t = key => translate(props.language, key);
       <label>{{ t('Inflation p.a. (%)') }}<input v-model.number="c.inputs.etfInflation" type="number" min="0" max="10" step="0.1" class="mt-1 w-full rounded-lg border-slate-300 text-sm"></label>
       <label>{{ t('Entnahmerate p.a. (%)') }}<input v-model.number="c.inputs.etfWithdrawalRate" type="number" min="0" max="10" step="0.1" class="mt-1 w-full rounded-lg border-slate-300 text-sm"></label>
     </div>
+    <div class="mt-3 rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs"><p class="font-bold text-slate-700">{{ t('Aktiver Zinsvergleich') }}</p><div class="mt-2 space-y-1"><div v-for="loan in c.activeScenario.value.loans" :key="loan.name" class="flex justify-between"><span>{{ t(loan.name) }}</span><strong>{{ c.formatPercent(loan.rate) }}</strong></div></div><p class="mt-2 border-t border-slate-200 pt-2 text-slate-500">{{ t('Kreditzinsen änderst du im Tab Darlehen; ETF-Annahmen direkt oben.') }}</p></div>
     <div class="mt-3 rounded-lg bg-amber-50 p-3 text-xs text-amber-900"><strong>{{ t('Wichtige Modellgrenze:') }}</strong> {{ t('ETF-Renditen sind unsicher. Kreditzinsen sind vertragliche Kosten. Das Ergebnis ist eine Szenariorechnung, keine Anlage- oder Steuerberatung.') }}</div>
   </section>
 </template>
