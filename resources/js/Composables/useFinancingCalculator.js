@@ -1,5 +1,6 @@
 import { computed, reactive } from 'vue';
 import { buildLoanPortfolio, scenarioStrategies } from './financingStrategies.js';
+import { sanitizeFundingList } from './renovationFunding.ts';
 
 const roundCent = value => Math.round(Number(value || 0) * 100);
 const euros = cents => Math.round(cents) / 100;
@@ -77,6 +78,7 @@ export const DEFAULT_INPUTS = Object.freeze({
     equity: 60000,
     renovationEnabled: false,
     renovationBudget: 50000,
+    renovationFunding: [],
     grossArea: 160,
     utilityArea: 40,
     buyers: 1,
@@ -115,7 +117,7 @@ export const DEFAULT_INPUTS = Object.freeze({
 });
 
 export function useFinancingCalculator(locale = { value: 'de' }) {
-  const inputs = reactive({ ...DEFAULT_INPUTS });
+  const inputs = reactive({ ...DEFAULT_INPUTS, renovationFunding: [] });
 
   const formatCurrency = value => new Intl.NumberFormat(locale.value === 'en' ? 'en-GB' : 'de-DE', { style: 'currency', currency: 'EUR' }).format(value || 0);
   const formatPercent = value => new Intl.NumberFormat(locale.value === 'en' ? 'en-GB' : 'de-DE', { style: 'percent', minimumFractionDigits: 1, maximumFractionDigits: 2 }).format((value || 0) / 100);
@@ -124,7 +126,11 @@ export function useFinancingCalculator(locale = { value: 'de' }) {
   const wiBankEligible = computed(() => wiBankAreaEligible.value || inputs.wiBankOverride);
   const transferTax = computed(() => roundCent(inputs.purchasePrice * inputs.transferTaxPercent / 100));
   const ancillaryCosts = computed(() => roundCent(inputs.purchasePrice * (inputs.transferTaxPercent + inputs.notaryPercent + inputs.brokerPercent) / 100));
-  const renovation = computed(() => inputs.renovationEnabled ? roundCent(inputs.renovationBudget) : 0);
+  const renovationFunding = computed(() => sanitizeFundingList(inputs.renovationFunding));
+  const renovationGrants = computed(() => renovationFunding.value.filter(item => item.kind === 'grant'));
+  const renovationLoans = computed(() => renovationFunding.value.filter(item => item.kind === 'credit'));
+  const renovationGrantTotal = computed(() => Math.min(roundCent(inputs.renovationBudget), renovationGrants.value.reduce((sum, item) => sum + roundCent(item.amount), 0)));
+  const renovation = computed(() => inputs.renovationEnabled ? Math.max(0, roundCent(inputs.renovationBudget) - renovationGrantTotal.value) : 0);
   const totalCapital = computed(() => roundCent(inputs.purchasePrice) + ancillaryCosts.value + renovation.value);
   const hessenClaim = computed(() => roundCent(inputs.buyers * 10000 + inputs.children * 5000));
   const hessenGrant = computed(() => Math.min(hessenClaim.value, transferTax.value));
@@ -137,15 +143,18 @@ export function useFinancingCalculator(locale = { value: 'de' }) {
       - roundCent(inputs.monthlyHousingUtilities) - roundCent(inputs.monthlyMaintenanceReserve),
   ));
 
-  function buildScenario({ wiBank = inputs.wiBankEnabled, renovationOn = inputs.renovationEnabled } = {}) {
-    const required = roundCent(inputs.purchasePrice) + ancillaryCosts.value + (renovationOn ? roundCent(inputs.renovationBudget) : 0);
-    const { loans, bank } = buildLoanPortfolio({ inputs, required, equity: roundCent(inputs.equity), wiBank, wiBankEligible: wiBankEligible.value, roundCent, monthlyPayment, percentRate });
+  function buildScenario({ wiBank = inputs.wiBankEnabled, renovationOn = inputs.renovationEnabled, includeRenovationFunding = true } = {}) {
+    const grant = renovationOn && includeRenovationFunding ? renovationGrantTotal.value : 0;
+    const required = roundCent(inputs.purchasePrice) + ancillaryCosts.value + (renovationOn ? Math.max(0, roundCent(inputs.renovationBudget) - grant) : 0);
+    const fundingLoans = renovationOn && includeRenovationFunding ? renovationLoans.value : [];
+    const { loans, bank } = buildLoanPortfolio({ inputs, required, equity: roundCent(inputs.equity), wiBank, wiBankEligible: wiBankEligible.value, renovationLoans: fundingLoans, roundCent, monthlyPayment, percentRate });
     const contractualMonthly = loans.reduce((sum, l) => sum + l.payment, 0);
     const targetGrossMonthly = roundCent(inputs.targetMonthlyRate) + roundCent(inputs.rentalIncome);
     const grossMonthly = inputs.useTargetRate ? Math.max(contractualMonthly, targetGrossMonthly) : contractualMonthly;
     const schedule = simulate(loans, hessenAnnual.value, inputs.useTargetRate ? grossMonthly : null, 600);
     return {
-      required, loans, bank, grossMonthly, contractualMonthly,
+      required, loans, bank, grossMonthly, contractualMonthly, renovationGrant: grant,
+      renovationFundingCredit: loans.filter(loan => loan.renovationFunding).reduce((sum, loan) => sum + loan.principal, 0),
       netMonthly: Math.max(0, grossMonthly - roundCent(inputs.rentalIncome)),
       schedule,
       debt: loans.reduce((sum, l) => sum + l.principal, 0),
@@ -155,9 +164,11 @@ export function useFinancingCalculator(locale = { value: 'de' }) {
   const scenarioWithWi = computed(() => buildScenario(scenarioStrategies.withWiBank(inputs)));
   const scenarioWithoutWi = computed(() => buildScenario(scenarioStrategies.withoutWiBank(inputs)));
   const scenarioRenovated = computed(() => buildScenario(scenarioStrategies.renovated(inputs)));
+  const scenarioRenovatedWithoutFunding = computed(() => buildScenario({ ...scenarioStrategies.renovated(inputs), includeRenovationFunding: false }));
   const scenarioNoRenovation = computed(() => buildScenario(scenarioStrategies.unrenovated(inputs)));
   const activeScenario = computed(() => buildScenario());
   const interestSaved = computed(() => Math.max(0, scenarioWithoutWi.value.schedule.totalInterest - scenarioWithWi.value.schedule.totalInterest));
+  const renovationFundingInterestSaved = computed(() => Math.max(0, scenarioRenovatedWithoutFunding.value.schedule.totalInterest - scenarioRenovated.value.schedule.totalInterest));
   const payoffMonths = computed(() => activeScenario.value.schedule.paidOffMonth);
   const payoffAge = computed(() => payoffMonths.value ? Number(inputs.currentAge) + payoffMonths.value / 12 : null);
   const payoffYear = computed(() => payoffMonths.value ? new Date().getFullYear() + Math.ceil(payoffMonths.value / 12) : null);
@@ -213,9 +224,9 @@ export function useFinancingCalculator(locale = { value: 'de' }) {
 
   return {
     inputs, formatCurrency, formatPercent, netLivingArea, wiBankAreaEligible, wiBankEligible,
-    transferTax, ancillaryCosts, totalCapital, hessenClaim, hessenGrant, hessenAnnual,
+    transferTax, ancillaryCosts, totalCapital, renovationFunding, renovationGrants, renovationLoans, renovationGrantTotal, hessenClaim, hessenGrant, hessenAnnual,
     totalHouseholdIncome, bankRentalIncome, availableOwnRate, monthlySurplus, bankNetMonthly, totalHousingCosts, housingCostRatio, applyAffordableRate, hessenRouting,
-    activeScenario, scenarioWithWi, scenarioWithoutWi, scenarioRenovated, scenarioNoRenovation,
-    interestSaved, payoffAge, payoffYear, targetProjection, targetWithWi, targetWithoutWi, annualChart, debtChart, euros,
+    activeScenario, scenarioWithWi, scenarioWithoutWi, scenarioRenovated, scenarioRenovatedWithoutFunding, scenarioNoRenovation,
+    interestSaved, renovationFundingInterestSaved, payoffAge, payoffYear, targetProjection, targetWithWi, targetWithoutWi, annualChart, debtChart, euros,
   };
 }

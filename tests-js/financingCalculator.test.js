@@ -51,6 +51,49 @@ describe('financing scenarios', () => {
     expect(calculator.availableOwnRate.value).toBe(available - 10000);
     expect(calculator.totalHousingCosts.value).toBe(calculator.activeScenario.value.netMonthly + 60000);
   });
+
+  test('renovation grants reduce required capital and the main-bank loan exactly', () => {
+    const calculator = useFinancingCalculator();
+    calculator.inputs.renovationEnabled = true;
+    const baseline = calculator.activeScenario.value;
+    calculator.inputs.renovationFunding.push({ id: 'grant', preset: 'bafa', name: 'BAFA', kind: 'grant', amount: 12000, interestRate: 0, interestOnlyYears: 0, termYears: 0 });
+    expect(calculator.activeScenario.value.required).toBe(baseline.required - 1_200_000);
+    expect(calculator.activeScenario.value.bank).toBe(baseline.bank - 1_200_000);
+    expect(calculator.activeScenario.value.renovationGrant).toBe(1_200_000);
+  });
+
+  test('renovation credits become amortized portfolio components', () => {
+    const calculator = useFinancingCalculator();
+    calculator.inputs.renovationEnabled = true;
+    calculator.inputs.renovationFunding.push({ id: 'kfw261', preset: 'kfw261', name: 'KfW 261', kind: 'credit', amount: 30000, interestRate: 1.5, interestOnlyYears: 2, termYears: 25 });
+    const loan = calculator.activeScenario.value.loans.find(item => item.name === 'KfW 261');
+    expect(loan?.principal).toBe(3_000_000);
+    expect(loan?.interestOnlyMonths).toBe(24);
+    expect(calculator.activeScenario.value.renovationFundingCredit).toBe(3_000_000);
+    expect(calculator.activeScenario.value.schedule.rows.some(row => row.balances['KfW 261'] < 3_000_000)).toBe(true);
+  });
+
+  test('grants cannot exceed the renovation budget', () => {
+    const calculator = useFinancingCalculator();
+    calculator.inputs.renovationEnabled = true;
+    calculator.inputs.renovationFunding.push({ id: 'grant', name: 'Grant', kind: 'grant', amount: 999999 });
+    expect(calculator.renovationGrantTotal.value).toBe(calculator.inputs.renovationBudget * 100);
+  });
+
+  test('scenario C exposes the interest benefit of cheaper renovation funding', () => {
+    const calculator = useFinancingCalculator();
+    calculator.inputs.renovationEnabled = true;
+    calculator.inputs.renovationFunding.push({ id: 'cheap', name: 'Förderkredit', kind: 'credit', amount: 30000, interestRate: 0.5, interestOnlyYears: 0, termYears: 30 });
+    expect(calculator.scenarioRenovated.value.loans.some(loan => loan.renovationFunding)).toBe(true);
+    expect(calculator.renovationFundingInterestSaved.value).toBeGreaterThan(0);
+  });
+
+  test('scenario C retains configured funding while the active renovation toggle is off', () => {
+    const calculator = useFinancingCalculator();
+    calculator.inputs.renovationFunding.push({ id: 'c-only', name: 'KfW 270', kind: 'credit', amount: 15000, interestRate: 2, interestOnlyYears: 1, termYears: 20 });
+    expect(calculator.activeScenario.value.loans.some(loan => loan.name === 'KfW 270')).toBe(false);
+    expect(calculator.scenarioRenovated.value.loans.some(loan => loan.name === 'KfW 270')).toBe(true);
+  });
 });
 
 test('share payload uses a compact sparse positional schema', () => {
@@ -69,4 +112,11 @@ test('compressed share payload round-trips and is shorter than positional Base64
   const compressed = compressSharePayload(payload);
   expect(decompressSharePayload(compressed)).toEqual(payload);
   expect(compressed.length).toBeLessThan(encodeSharePayload(payload).length);
+});
+
+test('renovation funding round-trips through the positional share payload', () => {
+  const defaults = { renovationFunding: [] };
+  const renovationFunding = [{ id: 'kfw261', preset: 'kfw261', name: 'KfW 261', kind: 'credit', amount: 30000, interestRate: 1.5, interestOnlyYears: 2, termYears: 25 }];
+  const expanded = expandSharePayload(decompressSharePayload(compressSharePayload(buildSharePayload({ renovationFunding }, defaults))));
+  expect(expanded.renovationFunding).toEqual(renovationFunding);
 });

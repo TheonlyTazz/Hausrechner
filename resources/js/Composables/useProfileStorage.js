@@ -1,4 +1,5 @@
 import { ref } from 'vue';
+import { sanitizeFundingList } from './renovationFunding.ts';
 
 const STORAGE_KEY = 'hausrechner-profiles-v1';
 
@@ -8,9 +9,11 @@ export function useProfileStorage(inputs, language = { value: 'de' }) {
   const allowedKeys = new Set(Object.keys(inputs));
   const text = (de, en) => language.value === 'en' ? en : de;
 
-  const sanitizeInputs = data => Object.fromEntries(Object.entries(data || {}).filter(([key, value]) =>
-    allowedKeys.has(key) && ['string', 'number', 'boolean'].includes(typeof value),
-  ));
+  const sanitizeInputs = data => Object.fromEntries(Object.entries(data || {}).flatMap(([key, value]) => {
+    if (!allowedKeys.has(key)) return [];
+    if (key === 'renovationFunding') return [[key, sanitizeFundingList(value)]];
+    return ['string', 'number', 'boolean'].includes(typeof value) ? [[key, value]] : [];
+  }));
   const persist = () => localStorage.setItem(STORAGE_KEY, JSON.stringify(profiles.value));
   const refresh = () => {
     try {
@@ -38,7 +41,9 @@ export function useProfileStorage(inputs, language = { value: 'de' }) {
   const load = id => {
     const profile = profiles.value.find(item => item.id === id);
     if (!profile) return;
-    Object.assign(inputs, sanitizeInputs(profile.data));
+    const data = sanitizeInputs(profile.data);
+    if (!Object.hasOwn(data, 'renovationFunding')) data.renovationFunding = [];
+    Object.assign(inputs, data);
     message.value = text(`Profil „${profile.name}“ wurde geladen.`, `Profile “${profile.name}” was loaded.`);
   };
   const remove = id => {

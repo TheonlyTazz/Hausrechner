@@ -5,7 +5,8 @@
         "build": "vite build",
         "build:pages": "vite build --config vite.pages.config.js",
         "dev": "vite",
-        "test:calculator": "vitest run tests-js"
+        "test:calculator": "vitest run tests-js",
+        "typecheck:funding": "tsc -p tsconfig.funding.json"
     },
     "devDependencies": {
         "autoprefixer": "^10.4.20",
@@ -14,6 +15,7 @@
         "laravel-vite-plugin": "^1.2.0",
         "postcss": "^8.4.47",
         "tailwindcss": "^3.4.13",
+        "typescript": "^7.0.2",
         "vite": "^6.0.11",
         "vitest": "^4.1.10"
     },

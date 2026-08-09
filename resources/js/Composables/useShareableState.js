@@ -1,5 +1,6 @@
 import { onMounted, ref, watch } from 'vue';
 import LZString from 'lz-string';
+import { sanitizeFundingList } from './renovationFunding.ts';
 
 const PREFIX = '#z=';
 const POSITIONAL_PREFIX = '#p=';
@@ -16,6 +17,7 @@ export const SHARE_SCHEMA = Object.freeze([
   'kfwInterestOnlyYears', 'employerEnabled', 'employerAmount', 'employerInterest',
   'employerPayment', 'employerTerm', 'employerBalloon', 'mainBankInterest', 'mainBankTerm',
   'targetMonthlyRate', 'useTargetRate', 'chartYears', 'currentAge',
+  'renovationFunding',
 ]);
 
 const toBase64Url = bytes => btoa(String.fromCharCode(...bytes))
@@ -32,7 +34,8 @@ export const decompressSharePayload = value => JSON.parse(LZString.decompressFro
 
 // Version 2 is a sparse positional array: [version, fieldIndex, value, fieldIndex, value, ...].
 export const buildSharePayload = (inputs, defaults) => SHARE_SCHEMA.reduce((payload, key, index) => {
-  if (inputs[key] !== defaults[key]) payload.push(index, inputs[key]);
+  const equal = Array.isArray(inputs[key]) ? JSON.stringify(inputs[key]) === JSON.stringify(defaults[key]) : inputs[key] === defaults[key];
+  if (!equal) payload.push(index, inputs[key]);
   return payload;
 }, [2]);
 
@@ -50,7 +53,11 @@ export function useShareableState(inputs, defaults, language = { value: 'de' }) 
   const shareMessage = ref('');
   const allowed = new Set(Object.keys(inputs));
   let ready = false;
-  const clean = data => Object.fromEntries(Object.entries(data || {}).filter(([key, value]) => allowed.has(key) && ['number', 'boolean', 'string'].includes(typeof value)));
+  const clean = data => Object.fromEntries(Object.entries(data || {}).flatMap(([key, value]) => {
+    if (!allowed.has(key)) return [];
+    if (key === 'renovationFunding') return [[key, sanitizeFundingList(value)]];
+    return ['number', 'boolean', 'string'].includes(typeof value) ? [[key, value]] : [];
+  }));
   const text = (de, en) => language.value === 'en' ? en : de;
   const syncUrl = () => history.replaceState(null, '', `${location.pathname}${location.search}${PREFIX}${compressSharePayload(buildSharePayload(clean({ ...inputs }), defaults))}`);
 
