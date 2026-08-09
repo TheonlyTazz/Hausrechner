@@ -23,7 +23,11 @@
   @page { size: A4 landscape; margin: 9mm; }
   body { background: white !important; font-size: 10px; }
   .no-print { display: none !important; }
-  .print-grid { display: grid !important; grid-template-columns: repeat(4, minmax(0, 1fr)) !important; }
+  .print-grid { display: grid !important; grid-template-columns: repeat(5, minmax(0, 1fr)) !important; gap: 6px !important; }
   .print-avoid { break-inside: avoid; box-shadow: none !important; }
   .print-full { grid-column: 1 / -1 !important; }
+  main { max-width: none !important; padding: 0 !important; }
+  details, button { display: none !important; }
+  canvas { max-height: 220px !important; }
+  .bg-white { background: white !important; color: #0f172a !important; }
 }

@@ -1,8 +1,10 @@
 import { computed, reactive } from 'vue';
+import { buildLoanPortfolio, scenarioStrategies } from './financingStrategies.js';
 
 const roundCent = value => Math.round(Number(value || 0) * 100);
 const euros = cents => Math.round(cents) / 100;
 const percentRate = percent => Number(percent || 0) / 100 / 12;
+const repaymentPriority = (a, b) => (b.rate - a.rate) || (a.name === 'KfW 124' ? -1 : b.name === 'KfW 124' ? 1 : 0);
 
 function monthlyPayment(principal, annualRate, years) {
   const months = Math.max(1, Math.round(years * 12));
@@ -35,7 +37,7 @@ function simulate(loans, hessenAnnual, monthlyBudget = null, horizonMonths = 600
       monthScheduled += interest + principalPaid;
     }
     let extraMonthly = monthlyBudget === null ? 0 : Math.max(0, monthlyBudget - monthScheduled);
-    for (const loan of [...items].filter(loan => (!loan.interestOnlyMonths || month > loan.interestOnlyMonths) && (!loan.balloonMonth || month >= loan.balloonMonth)).sort((a, b) => b.rate - a.rate)) {
+    for (const loan of [...items].filter(loan => (!loan.interestOnlyMonths || month > loan.interestOnlyMonths) && (!loan.balloonMonth || month >= loan.balloonMonth)).sort(repaymentPriority)) {
       if (!extraMonthly) break;
       const extra = Math.min(loan.balance, extraMonthly);
       loan.balance -= extra;
@@ -44,7 +46,7 @@ function simulate(loans, hessenAnnual, monthlyBudget = null, horizonMonths = 600
     }
     if (month <= 120 && month % 12 === 0 && hessenAnnual > 0) {
       let remaining = hessenAnnual;
-      for (const loan of [...items].sort((a, b) => b.rate - a.rate)) {
+      for (const loan of [...items].sort(repaymentPriority)) {
         const extra = Math.min(loan.balance, remaining);
         loan.balance -= extra;
         monthPrincipal += extra;
@@ -132,16 +134,7 @@ export function useFinancingCalculator(locale = { value: 'de' }) {
 
   function buildScenario({ wiBank = inputs.wiBankEnabled, renovationOn = inputs.renovationEnabled } = {}) {
     const required = roundCent(inputs.purchasePrice) + ancillaryCosts.value + (renovationOn ? roundCent(inputs.renovationBudget) : 0);
-    const employer = inputs.employerEnabled ? Math.min(roundCent(inputs.employerAmount), required) : 0;
-    const kfw = inputs.kfwEnabled ? Math.min(roundCent(inputs.kfwAmount), Math.max(0, required - roundCent(inputs.equity) - employer)) : 0;
-    const wi = wiBank && wiBankEligible.value ? Math.min(roundCent(inputs.wiBankAmount), Math.max(0, required - roundCent(inputs.equity) - employer - kfw)) : 0;
-    const bank = Math.max(0, required - roundCent(inputs.equity) - employer - kfw - wi);
-    const loans = [
-      { name: 'Hauptbank', principal: bank, rate: inputs.mainBankInterest, payment: monthlyPayment(bank, inputs.mainBankInterest, inputs.mainBankTerm) },
-      { name: 'WI Bank Hessen', principal: wi, rate: inputs.wiBankInterest, payment: monthlyPayment(wi, inputs.wiBankInterest, inputs.wiBankTerm) },
-      { name: 'KfW 124', principal: kfw, rate: inputs.kfwInterest, payment: monthlyPayment(kfw, inputs.kfwInterest, Math.max(1, inputs.kfwTerm - inputs.kfwInterestOnlyYears)), interestOnlyMonths: inputs.kfwInterestOnlyYears * 12 },
-      { name: 'AG-Darlehen', principal: employer, rate: inputs.employerInterest, payment: inputs.employerBalloon ? Math.round(employer * percentRate(inputs.employerInterest)) : roundCent(inputs.employerPayment), interestOnlyMonths: inputs.employerBalloon ? Math.max(0, inputs.employerTerm * 12 - 1) : 0, balloonMonth: inputs.employerBalloon ? inputs.employerTerm * 12 : null },
-    ].filter(l => l.principal > 0);
+    const { loans, bank } = buildLoanPortfolio({ inputs, required, equity: roundCent(inputs.equity), wiBank, wiBankEligible: wiBankEligible.value, roundCent, monthlyPayment, percentRate });
     const contractualMonthly = loans.reduce((sum, l) => sum + l.payment, 0);
     const targetGrossMonthly = roundCent(inputs.targetMonthlyRate) + roundCent(inputs.rentalIncome);
     const grossMonthly = inputs.useTargetRate ? Math.max(contractualMonthly, targetGrossMonthly) : contractualMonthly;
@@ -154,10 +147,10 @@ export function useFinancingCalculator(locale = { value: 'de' }) {
     };
   }
 
-  const scenarioWithWi = computed(() => buildScenario({ wiBank: true }));
-  const scenarioWithoutWi = computed(() => buildScenario({ wiBank: false }));
-  const scenarioRenovated = computed(() => buildScenario({ renovationOn: true }));
-  const scenarioNoRenovation = computed(() => buildScenario({ renovationOn: false }));
+  const scenarioWithWi = computed(() => buildScenario(scenarioStrategies.withWiBank(inputs)));
+  const scenarioWithoutWi = computed(() => buildScenario(scenarioStrategies.withoutWiBank(inputs)));
+  const scenarioRenovated = computed(() => buildScenario(scenarioStrategies.renovated(inputs)));
+  const scenarioNoRenovation = computed(() => buildScenario(scenarioStrategies.unrenovated(inputs)));
   const activeScenario = computed(() => buildScenario());
   const interestSaved = computed(() => Math.max(0, scenarioWithoutWi.value.schedule.totalInterest - scenarioWithWi.value.schedule.totalInterest));
   const payoffMonths = computed(() => activeScenario.value.schedule.paidOffMonth);
