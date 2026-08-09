@@ -6,7 +6,7 @@
         "build:pages": "vite build --config vite.pages.config.js",
         "dev": "vite",
         "test:calculator": "vitest run tests-js",
-        "typecheck:funding": "tsc -p tsconfig.funding.json"
+        "typecheck:models": "tsc -p tsconfig.models.json"
     },
     "devDependencies": {
         "autoprefixer": "^10.4.20",

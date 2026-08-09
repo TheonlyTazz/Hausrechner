@@ -8,5 +8,5 @@
     "noEmit": true,
     "skipLibCheck": true
   },
-  "include": ["resources/js/Composables/renovationFunding.ts"]
+  "include": ["resources/js/Composables/renovationFunding.ts", "resources/js/Composables/etfPlanner.ts"]
 }

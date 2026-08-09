@@ -1,6 +1,7 @@
 import { computed, reactive } from 'vue';
 import { buildLoanPortfolio, scenarioStrategies } from './financingStrategies.js';
 import { sanitizeFundingList } from './renovationFunding.ts';
+import { buildEtfPlan } from './etfPlanner.ts';
 
 const roundCent = value => Math.round(Number(value || 0) * 100);
 const euros = cents => Math.round(cents) / 100;
@@ -114,6 +115,15 @@ export const DEFAULT_INPUTS = Object.freeze({
     useTargetRate: true,
     chartYears: 30,
     currentAge: 35,
+    retirementAge: 67,
+    etfMonthlyBudget: 2200,
+    etfExistingCapital: 0,
+    etfExpectedReturn: 6,
+    etfAnnualCosts: 0.2,
+    etfTaxRate: 26.375,
+    etfRiskDiscount: 2,
+    etfInflation: 2,
+    etfWithdrawalRate: 3.5,
 });
 
 export function useFinancingCalculator(locale = { value: 'de' }) {
@@ -221,12 +231,17 @@ export function useFinancingCalculator(locale = { value: 'de' }) {
       };
     });
   });
+  const etfPlan = computed(() => buildEtfPlan(activeScenario.value.loans, {
+    currentAge: Number(inputs.currentAge), retirementAge: Number(inputs.retirementAge), monthlyBudget: Number(inputs.etfMonthlyBudget),
+    existingCapital: Number(inputs.etfExistingCapital), expectedReturn: Number(inputs.etfExpectedReturn), annualCosts: Number(inputs.etfAnnualCosts),
+    taxRate: Number(inputs.etfTaxRate), riskDiscount: Number(inputs.etfRiskDiscount), inflation: Number(inputs.etfInflation), withdrawalRate: Number(inputs.etfWithdrawalRate),
+  }, hessenAnnual.value));
 
   return {
     inputs, formatCurrency, formatPercent, netLivingArea, wiBankAreaEligible, wiBankEligible,
     transferTax, ancillaryCosts, totalCapital, netCapitalRequired, renovationFunding, renovationGrants, renovationLoans, renovationGrantTotal, hessenClaim, hessenGrant, hessenAnnual,
     totalHouseholdIncome, bankRentalIncome, availableOwnRate, monthlySurplus, bankNetMonthly, totalHousingCosts, housingCostRatio, applyAffordableRate, hessenRouting,
     activeScenario, scenarioWithWi, scenarioWithoutWi, scenarioRenovated, scenarioRenovatedWithoutFunding, scenarioNoRenovation,
-    interestSaved, renovationFundingInterestSaved, payoffAge, payoffYear, targetProjection, targetWithWi, targetWithoutWi, annualChart, debtChart, euros,
+    interestSaved, renovationFundingInterestSaved, payoffAge, payoffYear, targetProjection, targetWithWi, targetWithoutWi, annualChart, debtChart, etfPlan, euros,
   };
 }

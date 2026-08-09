@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'vitest';
 import { useFinancingCalculator } from '../resources/js/Composables/useFinancingCalculator.js';
 import { buildSharePayload, compressSharePayload, decodeSharePayload, decompressSharePayload, encodeSharePayload, expandSharePayload } from '../resources/js/Composables/useShareableState.js';
+import { buildEtfPlan, simulateEtfStrategy } from '../resources/js/Composables/etfPlanner.ts';
 
 describe('financing scenarios', () => {
   test('WI Bank strategy reduces the main bank allocation and total interest', () => {
@@ -154,4 +155,45 @@ test('renovation funding round-trips through the positional share payload', () =
   const renovationFunding = [{ id: 'kfw261', preset: 'kfw261', name: 'KfW 261', kind: 'credit', amount: 30000, interestRate: 1.5, interestOnlyYears: 2, termYears: 25 }];
   const expanded = expandSharePayload(decompressSharePayload(compressSharePayload(buildSharePayload({ renovationFunding }, defaults))));
   expect(expanded.renovationFunding).toEqual(renovationFunding);
+});
+
+test('ETF planner assumptions round-trip through the positional share payload', () => {
+  const defaults = { retirementAge: 67, etfMonthlyBudget: 2200, etfExpectedReturn: 6 };
+  const values = { retirementAge: 65, etfMonthlyBudget: 2500, etfExpectedReturn: 5.5 };
+  const expanded = expandSharePayload(decompressSharePayload(compressSharePayload(buildSharePayload(values, defaults))));
+  expect(expanded).toMatchObject(values);
+});
+
+describe('ETF and repayment planner', () => {
+  const loans = [
+    { name: 'Cheap loan', principal: 1000000, rate: 1, payment: 50000 },
+    { name: 'Expensive loan', principal: 2000000, rate: 5, payment: 100000 },
+  ];
+  const inputs = { currentAge: 40, retirementAge: 41, monthlyBudget: 2000, existingCapital: 0, expectedReturn: 6, annualCosts: 0.2, taxRate: 25, riskDiscount: 2, inflation: 2, withdrawalRate: 3.5 };
+
+  test('debt-first sends surplus to the highest-rate active loan', () => {
+    const result = simulateEtfStrategy(loans, inputs, 'debt-first');
+    const expensive = result.allocation.find(row => row.name === 'Expensive loan');
+    expect(expensive.extra).toBeGreaterThan(0);
+    expect(result.firstMonthEtf).toBe(0);
+  });
+
+  test('ETF-first preserves minimum payments and invests the free budget', () => {
+    const result = simulateEtfStrategy(loans, inputs, 'etf-first');
+    expect(result.allocation.reduce((sum, row) => sum + row.minimum, 0)).toBeGreaterThan(0);
+    expect(result.firstMonthEtf).toBeGreaterThan(0);
+    expect(result.totalContributions).toBeGreaterThan(result.firstMonthEtf);
+  });
+
+  test('planner compares all three strategies and returns the modeled maximum', () => {
+    const plan = buildEtfPlan(loans, inputs);
+    expect(plan.results.map(result => result.strategy)).toEqual(['debt-first', 'balanced', 'etf-first']);
+    expect(plan.recommended.netAssets).toBe(Math.max(...plan.results.map(result => result.netAssets)));
+  });
+
+  test('budget below contractual payments is reported as a shortfall', () => {
+    const result = simulateEtfStrategy(loans, { ...inputs, monthlyBudget: 100 }, 'balanced');
+    expect(result.monthlyShortfall).toBeGreaterThan(0);
+    expect(result.firstMonthEtf).toBe(0);
+  });
 });

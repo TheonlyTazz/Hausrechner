@@ -1,0 +1,25 @@
+<script setup>
+import { translate } from '../Composables/useUiPreferences';
+import EtfPlannerChart from './EtfPlannerChart.vue';
+const props = defineProps({ calculator: { type: Object, required: true }, language: { type: String, default: 'de' } });
+const c = props.calculator;
+const t = key => translate(props.language, key);
+const euro = cents => c.formatCurrency(c.euros(cents));
+const strategyName = strategy => t({ 'debt-first': 'Kredite zuerst', balanced: 'Risikoadjustierte Mischung', 'etf-first': 'ETF zuerst' }[strategy]);
+</script>
+<template>
+  <div class="space-y-5">
+    <section class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between"><div><p class="text-xs font-bold uppercase tracking-wide text-indigo-600">{{ t('Modell-Empfehlung') }}</p><h2 class="mt-1 text-xl font-bold">{{ strategyName(c.etfPlan.value.recommended.strategy) }}</h2><p class="mt-1 text-sm text-slate-500">{{ t('Höchstes modelliertes Nettovermögen zum Rentenbeginn unter deinen Annahmen.') }}</p></div><div class="rounded-xl bg-emerald-50 px-4 py-3 text-right text-emerald-900"><span class="text-xs">{{ t('Nettovermögen zur Rente') }}</span><strong class="block text-2xl">{{ euro(c.etfPlan.value.recommended.netAssets) }}</strong></div></div>
+      <div v-if="c.etfPlan.value.recommended.monthlyShortfall" class="mt-4 rounded-lg bg-red-50 p-3 text-sm font-semibold text-red-800">{{ t('Das Monatsbudget liegt unter den vertraglichen Mindestraten. Fehlbetrag:') }} {{ euro(c.etfPlan.value.recommended.monthlyShortfall) }}</div>
+      <h3 class="mt-5 text-sm font-bold">{{ t('Verteilung im ersten Monat') }}</h3>
+      <div class="mt-2 overflow-x-auto"><table class="w-full text-sm"><thead class="border-b text-left text-xs uppercase text-slate-500"><tr><th class="py-2">{{ t('Ziel') }}</th><th class="text-right">{{ t('Mindestrate') }}</th><th class="text-right">{{ t('Zusätzliche Tilgung') }}</th><th class="text-right">{{ t('Gesamt') }}</th></tr></thead><tbody><tr v-for="row in c.etfPlan.value.recommended.allocation" :key="row.name" class="border-b border-slate-100"><td class="py-2 font-semibold">{{ t(row.name) }}</td><td class="text-right">{{ euro(row.minimum) }}</td><td class="text-right text-emerald-700">{{ euro(row.extra) }}</td><td class="text-right font-bold">{{ euro(row.minimum + row.extra) }}</td></tr><tr class="bg-indigo-50 text-indigo-900"><td class="py-2 font-bold">ETF</td><td></td><td></td><td class="text-right font-bold">{{ euro(c.etfPlan.value.recommended.firstMonthEtf) }}</td></tr></tbody></table></div>
+    </section>
+
+    <section class="grid gap-4 lg:grid-cols-3">
+      <article v-for="result in c.etfPlan.value.results" :key="result.strategy" class="rounded-xl border bg-white p-4 shadow-sm" :class="result.strategy === c.etfPlan.value.recommended.strategy ? 'border-emerald-400 ring-2 ring-emerald-200' : 'border-slate-200'"><div class="flex justify-between gap-2"><h3 class="font-bold">{{ strategyName(result.strategy) }}</h3><span v-if="result.strategy === c.etfPlan.value.recommended.strategy" class="rounded-full bg-emerald-100 px-2 py-1 text-[10px] font-bold text-emerald-800">{{ t('MODELL-MAXIMUM') }}</span></div><dl class="mt-4 space-y-2 text-sm"><div class="flex justify-between"><dt>{{ t('ETF nach Modellsteuer') }}</dt><dd class="font-semibold">{{ euro(result.etfAtRetirement) }}</dd></div><div class="flex justify-between"><dt>{{ t('Heutige Kaufkraft') }}</dt><dd class="font-semibold">{{ euro(result.realEtfValue) }}</dd></div><div class="flex justify-between"><dt>{{ t('Restschuld zur Rente') }}</dt><dd class="font-semibold text-orange-700">{{ euro(result.debtAtRetirement) }}</dd></div><div class="flex justify-between border-t pt-2"><dt>{{ t('Nettovermögen') }}</dt><dd class="font-bold text-emerald-700">{{ euro(result.netAssets) }}</dd></div><div class="flex justify-between"><dt>{{ t('Modell-Entnahme/Monat') }}</dt><dd class="font-semibold">{{ euro(result.monthlyRetirementWithdrawal) }}</dd></div><div class="flex justify-between"><dt>{{ t('Kreditzinsen gesamt') }}</dt><dd class="font-semibold">{{ euro(result.totalInterest) }}</dd></div></dl></article>
+    </section>
+
+    <section class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm"><div><h2 class="font-bold">{{ t('Vermögens- und Restschuldverlauf') }}</h2><p class="mt-1 text-xs text-slate-500">{{ strategyName(c.etfPlan.value.recommended.strategy) }} · {{ t('nominale Modellwerte') }}</p></div><EtfPlannerChart class="mt-4" :rows="c.etfPlan.value.recommended.timeline" :locale="language" /></section>
+  </div>
+</template>

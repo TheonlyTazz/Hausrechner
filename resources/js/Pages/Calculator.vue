@@ -7,6 +7,8 @@ import ProfileManager from '../Components/ProfileManager.vue';
 import CurrencyInput from '../Components/CurrencyInput.vue';
 import InfoTooltip from '../Components/InfoTooltip.vue';
 import RenovationFundingEditor from '../Components/RenovationFundingEditor.vue';
+import EtfPlannerInputs from '../Components/EtfPlannerInputs.vue';
+import EtfPlannerDashboard from '../Components/EtfPlannerDashboard.vue';
 import { DEFAULT_INPUTS, useFinancingCalculator } from '../Composables/useFinancingCalculator';
 import { useUiPreferences } from '../Composables/useUiPreferences';
 import { useShareableState } from '../Composables/useShareableState';
@@ -27,7 +29,7 @@ const chartDisplay = ref('chart');
 const activeInput = ref('object');
 const wizardOpen = ref(false);
 const profilesOpen = ref(false);
-const inputTabs = [['object', 'Objekt'], ['income', 'Einkommen'], ['household', 'Haushalt'], ['loans', 'Darlehen']];
+const inputTabs = [['object', 'Objekt'], ['income', 'Einkommen'], ['household', 'Haushalt'], ['loans', 'Darlehen'], ['etf', 'ETF']];
 </script>
 
 <template>
@@ -54,7 +56,7 @@ const inputTabs = [['object', 'Objekt'], ['income', 'Einkommen'], ['household', 
 
       <div class="grid gap-5 xl:grid-cols-[390px_1fr]">
         <aside class="space-y-4 no-print">
-          <nav class="rounded-xl border border-slate-200 bg-white p-1.5 shadow-sm" aria-label="Eingabebereiche"><p class="px-2 pb-1 text-[10px] font-bold uppercase tracking-wide text-indigo-600 sm:hidden">{{ languagePreference === 'en' ? 'Step' : 'Schritt' }} {{ inputTabs.findIndex(tab => tab[0] === activeInput) + 1 }} / 4</p><div class="grid grid-cols-4 gap-1"><button v-for="(tab, index) in inputTabs" :key="tab[0]" type="button" class="rounded-lg px-1 py-2 text-[10px] font-bold transition sm:px-3 sm:text-xs" :class="activeInput === tab[0] ? 'bg-slate-900 text-white' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900'" @click="activeInput = tab[0]"><span class="mr-1 hidden text-indigo-500 sm:inline">{{ index + 1 }}.</span>{{ t(tab[1]) }}</button></div></nav>
+          <nav class="rounded-xl border border-slate-200 bg-white p-1.5 shadow-sm" aria-label="Eingabebereiche"><p class="px-2 pb-1 text-[10px] font-bold uppercase tracking-wide text-indigo-600 sm:hidden">{{ languagePreference === 'en' ? 'Step' : 'Schritt' }} {{ inputTabs.findIndex(tab => tab[0] === activeInput) + 1 }} / {{ inputTabs.length }}</p><div class="grid grid-cols-5 gap-1"><button v-for="(tab, index) in inputTabs" :key="tab[0]" type="button" class="rounded-lg px-1 py-2 text-[10px] font-bold transition sm:px-2 sm:text-xs" :class="activeInput === tab[0] ? 'bg-slate-900 text-white' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900'" @click="activeInput = tab[0]"><span class="mr-1 hidden text-indigo-500 sm:inline">{{ index + 1 }}.</span>{{ t(tab[1]) }}</button></div></nav>
           <section v-show="activeInput === 'object'" class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
             <h2 class="font-bold">{{ t('Objekt & Kaufnebenkosten') }}</h2>
             <div class="mt-3 grid grid-cols-2 gap-3">
@@ -118,9 +120,10 @@ const inputTabs = [['object', 'Objekt'], ['income', 'Einkommen'], ['household', 
             </div>
             <div class="mt-3 rounded-lg bg-slate-900 p-3 text-white"><label class="flex items-center justify-between text-sm font-bold">{{ t('Zielrate zur schnelleren Tilgung verwenden') }}<input v-model="c.inputs.useTargetRate" type="checkbox" class="rounded text-teal-600"></label><label class="mt-3 block text-xs text-slate-300">{{ t('Eigene Rate netto/Monat (€)') }}<CurrencyInput v-model="c.inputs.targetMonthlyRate" :disabled="!c.inputs.useTargetRate" class="mt-1 w-full rounded border-slate-600 bg-slate-800 text-white disabled:opacity-50" /></label><p class="mt-2 text-xs text-slate-300">{{ t('Gesamtzahlung inkl. Miete:') }} <strong class="text-white">{{ c.formatCurrency(Number(c.inputs.targetMonthlyRate) + Number(c.inputs.rentalIncome)) }}</strong></p><p class="mt-1 font-bold" :class="c.targetProjection.value.feasible ? 'text-teal-300' : 'text-red-300'">{{ c.targetProjection.value.feasible ? `${years(c.targetProjection.value.months)} · ${c.targetProjection.value.year}` : t('Rate deckt die Zinsen nicht') }}</p></div>
           </section>
+          <EtfPlannerInputs v-show="activeInput === 'etf'" :calculator="c" :language="languagePreference" />
         </aside>
 
-        <div class="space-y-5">
+        <div v-if="activeInput !== 'etf'" class="space-y-5">
           <section v-if="!c.wiBankAreaEligible.value" class="rounded-xl border-2 border-red-300 bg-red-50 p-4 text-red-900"><strong>{{ t('Förderhinweis:') }}</strong> {{ t('Die errechnete WoFlV-Fläche überschreitet 200 m². Das WI-Bank-Darlehen wird deaktiviert, solange keine Einzelfallprüfung angenommen wird.') }}</section>
           <section class="print-avoid rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
             <div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between"><div><p class="text-xs font-semibold uppercase tracking-wide text-slate-500">{{ t('Aktive Finanzierung') }}</p><h2 class="text-lg font-bold">{{ t('Darlehensaufteilung') }}</h2></div><div class="text-right text-sm text-slate-500"><p>{{ t('Hessengeld') }}: {{ euro(c.hessenGrant.value) }} · {{ euro(c.hessenAnnual.value) }}/{{ t('Jahr') }}</p><div v-if="c.hessenRouting.value.length" class="mt-1 flex items-center justify-end gap-2 text-xs font-semibold text-teal-700"><span>{{ t('Sondertilgung zuerst:') }} {{ t(c.hessenRouting.value[0][0]) }}</span><details class="relative text-left"><summary class="flex h-5 w-5 cursor-pointer list-none items-center justify-center rounded-full border border-teal-600">?</summary><div class="absolute right-0 z-20 mt-2 w-72 rounded-lg bg-slate-950 p-3 text-xs font-normal text-white shadow-xl">{{ languagePreference === 'en' ? 'Hessengeld is a state grant for eligible owner-occupied homes in Hesse. The model applies each annual installment using a waterfall: first to the active loan with the highest interest rate, then to the next most expensive loan.' : 'Hessengeld ist ein Landeszuschuss für förderfähiges, selbst genutztes Wohneigentum in Hessen. Das Modell verteilt jede Jahresrate per Wasserfall: zuerst auf das aktive Darlehen mit dem höchsten Zinssatz, danach auf den nächstteuren Baustein.' }}</div></details></div></div></div>
@@ -154,6 +157,7 @@ const inputTabs = [['object', 'Objekt'], ['income', 'Einkommen'], ['household', 
           </section>
           <p class="text-xs text-slate-500">{{ t('Unverbindliche Modellrechnung, keine Förderzusage oder Finanzberatung. Konditionen, Förderfähigkeit, Sondertilgungsrechte und WoFlV-Berechnung vor Antragstellung mit Förderinstitut und Bank prüfen.') }}</p>
         </div>
+        <EtfPlannerDashboard v-else :calculator="c" :language="languagePreference" />
       </div>
     </main>
     <FinancingWizard v-if="wizardOpen" :calculator="c" :language="languagePreference" @close="wizardOpen = false" />

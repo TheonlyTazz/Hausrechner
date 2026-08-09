@@ -18,6 +18,8 @@ export const SHARE_SCHEMA = Object.freeze([
   'employerPayment', 'employerTerm', 'employerBalloon', 'mainBankInterest', 'mainBankTerm',
   'targetMonthlyRate', 'useTargetRate', 'chartYears', 'currentAge',
   'renovationFunding',
+  'retirementAge', 'etfMonthlyBudget', 'etfExistingCapital', 'etfExpectedReturn', 'etfAnnualCosts',
+  'etfTaxRate', 'etfRiskDiscount', 'etfInflation', 'etfWithdrawalRate',
 ]);
 
 const toBase64Url = bytes => btoa(String.fromCharCode(...bytes))
