@@ -1,9 +1,46 @@
 import { onMounted, ref, watch } from 'vue';
 
-const PREFIX = '#profile=';
-const encode = value => btoa(String.fromCharCode(...new TextEncoder().encode(JSON.stringify(value))));
-const decode = value => JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(value), character => character.charCodeAt(0))));
-export const buildSharePayload = (inputs, defaults) => ({ version: 1, values: Object.fromEntries(Object.entries(inputs).filter(([key, value]) => value !== defaults[key])) });
+const PREFIX = '#p=';
+const LEGACY_PREFIX = '#profile=';
+
+// Never reorder this schema: its indexes are part of the public share-link format.
+export const SHARE_SCHEMA = Object.freeze([
+  'purchasePrice', 'transferTaxPercent', 'notaryPercent', 'brokerPercent', 'equity',
+  'renovationEnabled', 'renovationBudget', 'grossArea', 'utilityArea', 'buyers', 'children',
+  'rentalIncome', 'rentalIncomeHaircutPercent', 'householdNetIncome', 'otherMonthlyIncome',
+  'livingCosts', 'otherCommitments', 'monthlySafetyBuffer', 'monthlyHousingUtilities',
+  'monthlyMaintenanceReserve', 'wiBankEnabled', 'wiBankOverride', 'wiBankAmount',
+  'wiBankInterest', 'wiBankTerm', 'kfwEnabled', 'kfwAmount', 'kfwInterest', 'kfwTerm',
+  'kfwInterestOnlyYears', 'employerEnabled', 'employerAmount', 'employerInterest',
+  'employerPayment', 'employerTerm', 'employerBalloon', 'mainBankInterest', 'mainBankTerm',
+  'targetMonthlyRate', 'useTargetRate', 'chartYears', 'currentAge',
+]);
+
+const toBase64Url = bytes => btoa(String.fromCharCode(...bytes))
+  .replaceAll('+', '-').replaceAll('/', '_').replace(/=+$/u, '');
+const fromBase64Url = value => {
+  const base64 = value.replaceAll('-', '+').replaceAll('_', '/').padEnd(Math.ceil(value.length / 4) * 4, '=');
+  return Uint8Array.from(atob(base64), character => character.charCodeAt(0));
+};
+
+export const encodeSharePayload = payload => toBase64Url(new TextEncoder().encode(JSON.stringify(payload)));
+export const decodeSharePayload = value => JSON.parse(new TextDecoder().decode(fromBase64Url(value)));
+
+// Version 2 is a sparse positional array: [version, fieldIndex, value, fieldIndex, value, ...].
+export const buildSharePayload = (inputs, defaults) => SHARE_SCHEMA.reduce((payload, key, index) => {
+  if (inputs[key] !== defaults[key]) payload.push(index, inputs[key]);
+  return payload;
+}, [2]);
+
+export const expandSharePayload = payload => {
+  if (!Array.isArray(payload) || payload[0] !== 2) return payload?.values || payload;
+  const values = {};
+  for (let offset = 1; offset + 1 < payload.length; offset += 2) {
+    const key = SHARE_SCHEMA[payload[offset]];
+    if (key) values[key] = payload[offset + 1];
+  }
+  return values;
+};
 
 export function useShareableState(inputs, defaults, language = { value: 'de' }) {
   const shareMessage = ref('');
@@ -11,13 +48,13 @@ export function useShareableState(inputs, defaults, language = { value: 'de' }) 
   let ready = false;
   const clean = data => Object.fromEntries(Object.entries(data || {}).filter(([key, value]) => allowed.has(key) && ['number', 'boolean', 'string'].includes(typeof value)));
   const text = (de, en) => language.value === 'en' ? en : de;
-  const syncUrl = () => history.replaceState(null, '', `${location.pathname}${location.search}${PREFIX}${encode(buildSharePayload(clean({ ...inputs }), defaults))}`);
+  const syncUrl = () => history.replaceState(null, '', `${location.pathname}${location.search}${PREFIX}${encodeSharePayload(buildSharePayload(clean({ ...inputs }), defaults))}`);
 
   onMounted(() => {
-    if (location.hash.startsWith(PREFIX)) {
+    const prefix = location.hash.startsWith(PREFIX) ? PREFIX : (location.hash.startsWith(LEGACY_PREFIX) ? LEGACY_PREFIX : null);
+    if (prefix) {
       try {
-        const payload = decode(location.hash.slice(PREFIX.length));
-        Object.assign(inputs, clean(payload?.values || payload));
+        Object.assign(inputs, clean(expandSharePayload(decodeSharePayload(location.hash.slice(prefix.length)))));
         shareMessage.value = text('Geteilte Berechnung wurde geladen.', 'Shared calculation loaded.');
       } catch {
         shareMessage.value = text('Der geteilte Link ist ungültig.', 'The shared link is invalid.');

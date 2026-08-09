@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
 import { useFinancingCalculator } from '../resources/js/Composables/useFinancingCalculator.js';
-import { buildSharePayload } from '../resources/js/Composables/useShareableState.js';
+import { buildSharePayload, decodeSharePayload, encodeSharePayload, expandSharePayload } from '../resources/js/Composables/useShareableState.js';
 
 describe('financing scenarios', () => {
   test('WI Bank strategy reduces the main bank allocation and total interest', () => {
@@ -53,7 +53,13 @@ describe('financing scenarios', () => {
   });
 });
 
-test('share payload stores only values changed from defaults', () => {
+test('share payload uses a compact sparse positional schema', () => {
   const defaults = { purchasePrice: 300000, equity: 60000, children: 0 };
-  expect(buildSharePayload({ ...defaults, equity: 75000 }, defaults)).toEqual({ version: 1, values: { equity: 75000 } });
+  const payload = buildSharePayload({ ...defaults, equity: 75000 }, defaults);
+  expect(payload).toEqual([2, 4, 75000]);
+  expect(expandSharePayload(decodeSharePayload(encodeSharePayload(payload)))).toEqual({ equity: 75000 });
+});
+
+test('legacy object payloads remain readable', () => {
+  expect(expandSharePayload({ version: 1, values: { equity: 75000 } })).toEqual({ equity: 75000 });
 });
