@@ -1,0 +1,17 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body { font-feature-settings: "tnum" 1, "ss01" 1; }
+  input[type="number"] { @apply tabular-nums; }
+}
+
+@media print {
+  @page { size: A4 landscape; margin: 9mm; }
+  body { background: white !important; font-size: 10px; }
+  .no-print { display: none !important; }
+  .print-grid { display: grid !important; grid-template-columns: repeat(4, minmax(0, 1fr)) !important; }
+  .print-avoid { break-inside: avoid; box-shadow: none !important; }
+  .print-full { grid-column: 1 / -1 !important; }
+}
