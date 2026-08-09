@@ -17,6 +17,8 @@ const t = preferences.t;
 const c = useFinancingCalculator(languagePreference);
 const sharing = useShareableState(c.inputs, DEFAULT_INPUTS, languagePreference);
 const euro = cents => c.formatCurrency(c.euros(cents));
+const scenarioHousingCosts = scenario => scenario.netMonthly
+  + Math.round((Number(c.inputs.monthlyHousingUtilities || 0) + Number(c.inputs.monthlyMaintenanceReserve || 0)) * 100);
 const years = months => months ? (languagePreference.value === 'en' ? `${Math.floor(months / 12)} yrs ${months % 12} mos` : `${Math.floor(months / 12)} J. ${months % 12} Mon.`) : (languagePreference.value === 'en' ? 'over 50 years' : 'über 50 Jahre');
 const print = () => window.print();
 const activeChart = ref('payments');
@@ -144,6 +146,7 @@ const inputTabs = [['object', 'Objekt'], ['income', 'Einkommen'], ['household', 
               [c.inputs.renovationEnabled ? 'C · Null-Sanierung' : 'C · Mit Sanierung', c.inputs.renovationEnabled ? c.scenarioNoRenovation.value : c.scenarioRenovated.value, 'border-slate-300']
             ]" :key="scenario[0]" class="print-avoid rounded-xl border-t-4 bg-white p-4 shadow-sm" :class="[scenario[2], scenario[0].startsWith('A') && c.interestSaved.value > 0 ? 'ring-2 ring-emerald-400' : '']">
               <div :class="scenario[0].startsWith('A') && c.interestSaved.value > 0 ? '-mx-4 -mt-4 mb-3 flex items-center justify-between rounded-t-lg bg-emerald-600 px-4 py-3 text-white' : ''"><p class="text-xs font-bold uppercase" :class="scenario[0].startsWith('A') && c.interestSaved.value > 0 ? 'text-white' : 'text-slate-500'">{{ t(scenario[0]) }}</p><span v-if="scenario[0].startsWith('A') && c.interestSaved.value > 0" class="rounded-full bg-white/20 px-2 py-1 text-[10px] font-bold">{{ languagePreference === 'en' ? 'LOWER INTEREST' : 'ZINSVORTEIL' }}</span></div><p class="mt-2 text-2xl font-bold">{{ euro(scenario[1].netMonthly) }} <span class="text-xs font-normal text-slate-500">{{ t('netto/Monat') }}</span></p>
+              <div class="mt-3 flex items-center justify-between rounded-lg bg-indigo-50 px-3 py-2 text-sm text-indigo-950"><span>{{ t('Gesamtwohnkosten') }}</span><strong>{{ euro(scenarioHousingCosts(scenario[1])) }}</strong></div>
               <dl class="mt-3 space-y-1 text-sm"><div class="flex justify-between"><dt>{{ t('Kapitalbedarf') }}</dt><dd class="font-semibold">{{ euro(scenario[1].required) }}</dd></div><div class="flex justify-between"><dt>{{ t('Hauptbank') }}</dt><dd class="font-semibold">{{ euro(scenario[1].bank) }}</dd></div><div class="flex justify-between"><dt>{{ t('Zinsen gesamt') }}</dt><dd class="font-semibold">{{ euro(scenario[1].schedule.totalInterest) }}</dd></div><div class="flex justify-between"><dt>{{ t('Laufzeit') }}</dt><dd class="font-semibold">{{ years(scenario[1].schedule.paidOffMonth) }}</dd></div><div v-if="scenario[0].includes('WI Bank')" class="flex justify-between border-t pt-1"><dt>{{ t('Bei Zielrate') }}</dt><dd class="font-semibold">{{ years(scenario[0].startsWith('A') ? c.targetWithWi.value.months : c.targetWithoutWi.value.months) }}</dd></div></dl>
             </article>
           </section>
