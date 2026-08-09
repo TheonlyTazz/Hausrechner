@@ -6,6 +6,7 @@ const c = props.calculator;
 const t = key => translate(props.language, key);
 const euro = cents => c.formatCurrency(c.euros(cents));
 const strategyName = strategy => t({ 'debt-first': 'Kredite zuerst', balanced: 'Risikoadjustierte Mischung', 'etf-first': 'ETF zuerst' }[strategy]);
+const phaseDate = month => `${new Date().getFullYear() + Math.floor((month - 1) / 12)} · ${t('Monat')} ${month}`;
 </script>
 <template>
   <div class="space-y-5">
@@ -16,6 +17,9 @@ const strategyName = strategy => t({ 'debt-first': 'Kredite zuerst', balanced: '
       <div v-if="c.etfPlan.value.recommended.monthlyShortfall" class="mt-4 rounded-lg bg-red-50 p-3 text-sm font-semibold text-red-800">{{ t('Das Monatsbudget liegt unter den vertraglichen Mindestraten. Fehlbetrag:') }} {{ euro(c.etfPlan.value.recommended.monthlyShortfall) }}</div>
       <h3 class="mt-5 text-sm font-bold">{{ t('Verteilung im ersten Monat') }}</h3>
       <div class="mt-2 overflow-x-auto"><table class="w-full text-sm"><thead class="border-b text-left text-xs uppercase text-slate-500"><tr><th class="py-2">{{ t('Ziel') }}</th><th class="text-right">{{ t('Mindestrate') }}</th><th class="text-right">{{ t('Zusätzliche Tilgung') }}</th><th class="text-right">{{ t('Gesamt') }}</th></tr></thead><tbody><tr v-for="row in c.etfPlan.value.recommended.allocation" :key="row.name" class="border-b border-slate-100"><td class="py-2 font-semibold">{{ t(row.name) }}</td><td class="text-right">{{ euro(row.minimum) }}</td><td class="text-right text-emerald-700">{{ euro(row.extra) }}</td><td class="text-right font-bold">{{ euro(row.minimum + row.extra) }}</td></tr><tr class="bg-indigo-50 text-indigo-900"><td class="py-2 font-bold">ETF</td><td></td><td></td><td class="text-right font-bold">{{ euro(c.etfPlan.value.recommended.firstMonthEtf) }}</td></tr></tbody></table></div>
+      <h3 class="mt-5 text-sm font-bold">{{ t('Umschichtungsplan bis zur Rente') }}</h3><p class="mt-1 text-xs text-slate-500">{{ t('Nach jeder vollständigen Tilgung wird das freie Monatsbudget automatisch neu verteilt.') }}</p>
+      <div class="mt-2 overflow-x-auto"><table class="w-full text-sm"><thead class="border-b text-left text-xs uppercase text-slate-500"><tr><th class="py-2">{{ t('Zeitraum') }}</th><th>{{ t('Priorität für freies Budget') }}</th><th class="text-right">{{ t('Betrag ab Phasenstart') }}</th></tr></thead><tbody><tr v-for="phase in c.etfPlan.value.recommended.phases" :key="`${phase.startMonth}-${phase.target}`" class="border-b border-slate-100"><td class="py-2">{{ phaseDate(phase.startMonth) }} – {{ phaseDate(phase.endMonth) }}</td><td class="font-semibold" :class="phase.target === 'ETF' ? 'text-indigo-700' : 'text-emerald-700'">{{ t(phase.target) }}</td><td class="text-right font-bold">{{ euro(phase.monthlyAmount) }}</td></tr></tbody></table></div>
+      <p class="mt-2 text-xs text-amber-700">{{ t('Der Phasenplan unterstellt, dass die dargestellten zusätzlichen Tilgungen vertraglich zulässig sind. Sondertilgungsgrenzen und Vorfälligkeitskosten bitte je Kredit prüfen.') }}</p>
     </section>
 
     <section class="grid gap-4 lg:grid-cols-3">

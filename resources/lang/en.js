@@ -90,5 +90,12 @@ export default {
   'Ergebnis: Nach den Mindestraten fließt das freie Budget zunächst in den ETF.': 'Result: After minimum payments, the free budget initially goes into the ETF.',
   'RISIKOADJUSTIERT': 'RISK-ADJUSTED',
   'HÖCHSTER ERWARTUNGSWERT': 'HIGHEST EXPECTED VALUE',
+  'Monat': 'month',
+  'Umschichtungsplan bis zur Rente': 'Reallocation plan until retirement',
+  'Nach jeder vollständigen Tilgung wird das freie Monatsbudget automatisch neu verteilt.': 'After each loan is fully repaid, the free monthly budget is automatically reallocated.',
+  'Zeitraum': 'Period',
+  'Priorität für freies Budget': 'Priority for free budget',
+  'Betrag ab Phasenstart': 'Amount at phase start',
+  'Der Phasenplan unterstellt, dass die dargestellten zusätzlichen Tilgungen vertraglich zulässig sind. Sondertilgungsgrenzen und Vorfälligkeitskosten bitte je Kredit prüfen.': 'The phase plan assumes that the displayed additional repayments are contractually permitted. Check special-repayment limits and early-repayment charges for each loan.',
   'Unverbindliche Modellrechnung, keine Förderzusage oder Finanzberatung. Konditionen, Förderfähigkeit, Sondertilgungsrechte und WoFlV-Berechnung vor Antragstellung mit Förderinstitut und Bank prüfen.': 'Non-binding model calculation, not a subsidy approval or financial advice. Verify terms, eligibility, special repayment rights and WoFlV calculation with the funding institution and bank before applying.',
 };

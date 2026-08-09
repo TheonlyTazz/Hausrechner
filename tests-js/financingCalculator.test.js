@@ -199,6 +199,17 @@ describe('ETF and repayment planner', () => {
     expect(plan.recommended.firstMonthEtf).toBe(0);
   });
 
+  test('equal-rate loans prioritize KfW 124 and reallocate after it is paid off', () => {
+    const phaseInputs = { ...inputs, retirementAge: 43, monthlyBudget: 2000, expectedReturn: 6, annualCosts: 0.2, taxRate: 26.375, riskDiscount: 2 };
+    const plan = buildEtfPlan([
+      { name: 'Main bank', principal: 2000000, rate: 3.5, payment: 50000 },
+      { name: 'KfW 124', principal: 500000, rate: 3.5, payment: 25000 },
+    ], phaseInputs);
+    expect(plan.recommended.phases[0].target).toBe('KfW 124');
+    expect(plan.recommended.phases.some(phase => phase.target === 'Main bank')).toBe(true);
+    expect(plan.recommended.phases.some(phase => phase.target === 'ETF')).toBe(true);
+  });
+
   test('budget below contractual payments is reported as a shortfall', () => {
     const result = simulateEtfStrategy(loans, { ...inputs, monthlyBudget: 100 }, 'balanced');
     expect(result.monthlyShortfall).toBeGreaterThan(0);

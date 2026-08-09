@@ -3,11 +3,12 @@ export type EtfStrategy = 'debt-first' | 'etf-first' | 'balanced';
 export interface PlannerLoan { name: string; principal: number; rate: number; payment: number; interestOnlyMonths?: number; balloonMonth?: number | null }
 export interface EtfPlannerInputs { currentAge: number; retirementAge: number; monthlyBudget: number; existingCapital: number; expectedReturn: number; annualCosts: number; taxRate: number; riskDiscount: number; inflation: number; withdrawalRate: number }
 export interface AllocationRow { name: string; minimum: number; extra: number }
-export interface EtfPlanResult { strategy: EtfStrategy; etfAtRetirement: number; realEtfValue: number; debtAtRetirement: number; netAssets: number; totalInterest: number; totalContributions: number; monthlyRetirementWithdrawal: number; paidOffMonth: number | null; monthlyShortfall: number; firstMonthEtf: number; allocation: AllocationRow[]; timeline: Array<{ year: number; etf: number; debt: number; net: number }> }
+export interface AllocationPhase { startMonth: number; endMonth: number; target: string; monthlyAmount: number }
+export interface EtfPlanResult { strategy: EtfStrategy; etfAtRetirement: number; realEtfValue: number; debtAtRetirement: number; netAssets: number; totalInterest: number; totalContributions: number; monthlyRetirementWithdrawal: number; paidOffMonth: number | null; monthlyShortfall: number; firstMonthEtf: number; allocation: AllocationRow[]; phases: AllocationPhase[]; timeline: Array<{ year: number; etf: number; debt: number; net: number }> }
 
 const cents = (euros: number): number => Math.round((Number(euros) || 0) * 100);
 const annualToMonthly = (percent: number): number => (Number(percent) || 0) / 100 / 12;
-const priority = (a: PlannerLoan, b: PlannerLoan): number => b.rate - a.rate;
+const priority = (a: PlannerLoan, b: PlannerLoan): number => (b.rate - a.rate) || (a.name === 'KfW 124' ? -1 : b.name === 'KfW 124' ? 1 : 0);
 
 export function simulateEtfStrategy(sourceLoans: PlannerLoan[], inputs: EtfPlannerInputs, strategy: EtfStrategy, hessenAnnual = 0): EtfPlanResult {
   const months = Math.max(1, Math.round((Math.max(inputs.currentAge, inputs.retirementAge) - inputs.currentAge) * 12));
@@ -22,6 +23,7 @@ export function simulateEtfStrategy(sourceLoans: PlannerLoan[], inputs: EtfPlann
   let monthlyShortfall = 0;
   let firstMonthEtf = 0;
   const allocation = new Map<string, AllocationRow>();
+  const phases: AllocationPhase[] = [];
   const timeline: EtfPlanResult['timeline'] = [{ year: new Date().getFullYear(), etf, debt: loans.reduce((sum, loan) => sum + loan.balance, 0), net: etf - loans.reduce((sum, loan) => sum + loan.balance, 0) }];
 
   for (let month = 1; month <= months; month += 1) {
@@ -44,6 +46,11 @@ export function simulateEtfStrategy(sourceLoans: PlannerLoan[], inputs: EtfPlann
     let free = Math.max(0, budget - scheduledTotal);
     const active = loans.filter(loan => loan.balance > 0).sort(priority);
     const debtGetsExtra = strategy === 'debt-first' || (strategy === 'balanced' && active.length > 0 && active[0].rate >= riskAdjustedReturn);
+    const phaseTarget = free > 0 ? (debtGetsExtra && active.length ? active[0].name : 'ETF') : '';
+    if (phaseTarget && phases.at(-1)?.target !== phaseTarget) {
+      if (phases.length) phases[phases.length - 1].endMonth = month - 1;
+      phases.push({ startMonth: month, endMonth: months, target: phaseTarget, monthlyAmount: free });
+    }
     if (debtGetsExtra) {
       for (const loan of active) {
         if (!free) break;
@@ -85,7 +92,7 @@ export function simulateEtfStrategy(sourceLoans: PlannerLoan[], inputs: EtfPlann
   return {
     strategy, etfAtRetirement: etfAfterTax, realEtfValue, debtAtRetirement, netAssets: etfAfterTax - debtAtRetirement,
     totalInterest, totalContributions: contributions, monthlyRetirementWithdrawal: Math.round(etfAfterTax * Math.max(0, inputs.withdrawalRate) / 100 / 12),
-    paidOffMonth, monthlyShortfall, firstMonthEtf, allocation: [...allocation.values()], timeline,
+    paidOffMonth, monthlyShortfall, firstMonthEtf, allocation: [...allocation.values()], phases, timeline,
   };
 }
 
