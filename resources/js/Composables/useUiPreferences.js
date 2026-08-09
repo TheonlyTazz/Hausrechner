@@ -1,7 +1,7 @@
 import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
 const english = {
-  'Finanzierungsplanung · lokal': 'Financing plan · local',
+  'Finanzierungsplanung': 'Financing plan',
   'Hauskaufrechner Hessen': 'Home Financing Calculator Hesse',
   'Planungs-Wizard': 'Planning wizard',
   'PDF / Druckansicht': 'PDF / Print view',
