@@ -41,18 +41,23 @@ export function useUiPreferences(root) {
   const translateTree = () => {
     if (!root.value || translating) return;
     translating = true;
-    const reverse = Object.fromEntries(Object.entries(english).map(([de, en]) => [en, de]));
-    const walker = document.createTreeWalker(root.value, NodeFilter.SHOW_TEXT);
-    let node;
-    while ((node = walker.nextNode())) {
-      const raw = node.nodeValue;
-      const trimmed = raw.trim();
-      if (!trimmed) continue;
-      const translated = language.value === 'en' ? english[trimmed] : reverse[trimmed];
-      if (translated) node.nodeValue = raw.replace(trimmed, translated);
+    observer?.disconnect();
+    try {
+      const reverse = Object.fromEntries(Object.entries(english).map(([de, en]) => [en, de]));
+      const walker = document.createTreeWalker(root.value, NodeFilter.SHOW_TEXT);
+      let node;
+      while ((node = walker.nextNode())) {
+        const raw = node.nodeValue;
+        const trimmed = raw.trim();
+        if (!trimmed) continue;
+        const translated = language.value === 'en' ? english[trimmed] : reverse[trimmed];
+        if (translated && translated !== trimmed) node.nodeValue = raw.replace(trimmed, translated);
+      }
+      document.documentElement.lang = language.value;
+    } finally {
+      translating = false;
+      observer?.observe(root.value, { childList: true, subtree: true });
     }
-    document.documentElement.lang = language.value;
-    translating = false;
   };
   const applyTheme = () => {
     document.documentElement.classList.toggle('dark', theme.value === 'dark');
@@ -66,7 +71,7 @@ export function useUiPreferences(root) {
   onMounted(() => {
     applyTheme(); translateTree();
     observer = new MutationObserver(() => queueMicrotask(translateTree));
-    observer.observe(root.value, { childList: true, subtree: true, characterData: true });
+    observer.observe(root.value, { childList: true, subtree: true });
   });
   onBeforeUnmount(() => observer?.disconnect());
   return { language, theme, toggleLanguage, toggleTheme };
