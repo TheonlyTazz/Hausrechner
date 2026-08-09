@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from 'vue';
+import { ref, toRef } from 'vue';
 import { useProfileStorage } from '../Composables/useProfileStorage';
 import { translate } from '../Composables/useUiPreferences';
 
@@ -7,7 +7,7 @@ const props = defineProps({ inputs: { type: Object, required: true }, language: 
 const emit = defineEmits(['close']);
 const name = ref('');
 const fileInput = ref(null);
-const store = useProfileStorage(props.inputs);
+const store = useProfileStorage(props.inputs, toRef(props, 'language'));
 const t = key => translate(props.language, key);
 
 const save = () => {

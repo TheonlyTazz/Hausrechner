@@ -18,6 +18,8 @@
 .dark .text-teal-950, .dark .text-teal-900, .dark .text-teal-800 { color: #99f6e4 !important; }
 .dark .bg-red-50 { background-color: #450a0a !important; }
 .dark .text-red-900 { color: #fecaca !important; }
+.kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (min-width: 1280px) { .kpi-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
 
 @media print {
   @page { size: A4 landscape; margin: 9mm; }

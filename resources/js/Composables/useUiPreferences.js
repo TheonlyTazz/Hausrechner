@@ -13,6 +13,7 @@ export function useUiPreferences() {
   const theme = ref(localStorage.getItem('hausrechner-theme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
   const t = key => translate(language.value, key);
   const toggleLanguage = () => { language.value = language.value === 'de' ? 'en' : 'de'; };
+  const setLanguage = value => { if (messages[value]) language.value = value; };
   const toggleTheme = () => { theme.value = theme.value === 'dark' ? 'light' : 'dark'; };
 
   watch(language, value => {
@@ -24,5 +25,5 @@ export function useUiPreferences() {
     document.documentElement.classList.toggle('dark', value === 'dark');
   }, { immediate: true });
 
-  return { language: computed(() => language.value), theme: computed(() => theme.value), t, toggleLanguage, toggleTheme };
+  return { language: computed(() => language.value), theme: computed(() => theme.value), t, toggleLanguage, setLanguage, toggleTheme };
 }
