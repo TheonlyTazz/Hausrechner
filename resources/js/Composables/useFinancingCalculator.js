@@ -67,7 +67,7 @@ function simulate(loans, hessenAnnual, monthlyBudget = null, horizonMonths = 600
   return { rows, totalInterest, paidOffMonth, remaining: rows.at(-1)?.balance || 0 };
 }
 
-export function useFinancingCalculator() {
+export function useFinancingCalculator(locale = { value: 'de' }) {
   const inputs = reactive({
     purchasePrice: 325000,
     transferTaxPercent: 6,
@@ -111,8 +111,8 @@ export function useFinancingCalculator() {
     currentAge: 38,
   });
 
-  const formatCurrency = value => new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(value || 0);
-  const formatPercent = value => new Intl.NumberFormat('de-DE', { style: 'percent', minimumFractionDigits: 1, maximumFractionDigits: 2 }).format((value || 0) / 100);
+  const formatCurrency = value => new Intl.NumberFormat(locale.value === 'en' ? 'en-GB' : 'de-DE', { style: 'currency', currency: 'EUR' }).format(value || 0);
+  const formatPercent = value => new Intl.NumberFormat(locale.value === 'en' ? 'en-GB' : 'de-DE', { style: 'percent', minimumFractionDigits: 1, maximumFractionDigits: 2 }).format((value || 0) / 100);
   const netLivingArea = computed(() => Math.max(0, Number(inputs.grossArea) - Number(inputs.utilityArea)));
   const wiBankAreaEligible = computed(() => netLivingArea.value <= 200);
   const wiBankEligible = computed(() => wiBankAreaEligible.value || inputs.wiBankOverride);

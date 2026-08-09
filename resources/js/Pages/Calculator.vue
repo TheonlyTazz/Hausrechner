@@ -4,23 +4,28 @@ import AmortizationChart from '../Components/AmortizationChart.vue';
 import DebtBalanceChart from '../Components/DebtBalanceChart.vue';
 import FinancingWizard from '../Components/FinancingWizard.vue';
 import { useFinancingCalculator } from '../Composables/useFinancingCalculator';
+import { useUiPreferences } from '../Composables/useUiPreferences';
 
-const c = useFinancingCalculator();
+const pageRoot = ref(null);
+const languagePreference = ref(localStorage.getItem('hausrechner-language') || 'de');
+const c = useFinancingCalculator(languagePreference);
 const euro = cents => c.formatCurrency(c.euros(cents));
-const years = months => months ? `${Math.floor(months / 12)} J. ${months % 12} Mon.` : 'über 50 Jahre';
+const years = months => months ? (languagePreference.value === 'en' ? `${Math.floor(months / 12)} yrs ${months % 12} mos` : `${Math.floor(months / 12)} J. ${months % 12} Mon.`) : (languagePreference.value === 'en' ? 'over 50 years' : 'über 50 Jahre');
 const print = () => window.print();
 const activeChart = ref('payments');
 const activeInput = ref('object');
 const wizardOpen = ref(false);
 const inputTabs = [['object', 'Objekt'], ['income', 'Einkommen'], ['household', 'Haushalt'], ['loans', 'Darlehen']];
+const preferences = useUiPreferences(pageRoot);
+languagePreference.value = preferences.language.value;
 </script>
 
 <template>
-  <div class="min-h-screen">
+  <div ref="pageRoot" class="min-h-screen bg-slate-50 text-slate-900 transition-colors dark:bg-slate-950 dark:text-slate-100">
     <header class="bg-slate-950 text-white no-print">
       <div class="mx-auto flex max-w-[1600px] items-center justify-between px-4 py-4 lg:px-8">
         <div><p class="text-xs font-semibold uppercase tracking-[.2em] text-teal-300">Finanzierungsplanung · lokal</p><h1 class="text-xl font-bold">Hauskaufrechner Hessen</h1></div>
-        <div class="flex gap-2"><button type="button" class="rounded-lg bg-teal-500 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-teal-400" @click="wizardOpen = true">Planungs-Wizard</button><button @click="print" class="rounded-lg bg-white px-4 py-2 text-sm font-semibold text-slate-900 hover:bg-teal-50">PDF / Druckansicht</button></div>
+        <div class="flex flex-wrap justify-end gap-2"><button type="button" class="rounded-lg border border-slate-700 px-3 py-2 text-sm font-semibold hover:bg-slate-800" :aria-label="preferences.language.value === 'de' ? 'Switch to English' : 'Auf Deutsch wechseln'" @click="preferences.toggleLanguage(); languagePreference = preferences.language.value">{{ preferences.language.value === 'de' ? 'EN' : 'DE' }}</button><button type="button" class="rounded-lg border border-slate-700 px-3 py-2 text-sm font-semibold hover:bg-slate-800" aria-label="Farbschema wechseln" @click="preferences.toggleTheme">{{ preferences.theme.value === 'dark' ? '☀' : '◐' }}</button><button type="button" class="rounded-lg bg-teal-500 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-teal-400" @click="wizardOpen = true">Planungs-Wizard</button><button @click="print" class="rounded-lg bg-white px-4 py-2 text-sm font-semibold text-slate-900 hover:bg-teal-50">PDF / Druckansicht</button></div>
       </div>
     </header>
 
@@ -113,8 +118,8 @@ const inputTabs = [['object', 'Objekt'], ['income', 'Einkommen'], ['household', 
                 <button type="button" role="tab" :aria-selected="activeChart === 'debt'" class="rounded-md px-3 py-2 transition" :class="activeChart === 'debt' ? 'bg-white text-slate-950 shadow-sm' : 'text-slate-500 hover:text-slate-800'" @click="activeChart = 'debt'">Restschuld</button>
               </div>
             </div>
-            <div v-show="activeChart === 'payments'" role="tabpanel"><div class="mt-4 flex justify-between"><p class="text-sm font-semibold">Zins- und Tilgungsverlauf</p><span class="text-xs text-slate-500">{{ c.inputs.chartYears }} Jahre</span></div><AmortizationChart class="mt-3" :rows="c.annualChart.value" /></div>
-            <div v-show="activeChart === 'debt'" role="tabpanel"><div class="mt-4 flex justify-between"><p class="text-sm font-semibold">Restschuldverlauf</p><strong class="text-sm text-teal-800">Schuldenfrei in {{ years(c.activeScenario.value.schedule.paidOffMonth) }}</strong></div><DebtBalanceChart class="mt-3" :rows="c.debtChart.value" /></div>
+            <div v-show="activeChart === 'payments'" role="tabpanel"><div class="mt-4 flex justify-between"><p class="text-sm font-semibold">Zins- und Tilgungsverlauf</p><span class="text-xs text-slate-500">{{ c.inputs.chartYears }} {{ languagePreference === 'en' ? 'years' : 'Jahre' }}</span></div><AmortizationChart class="mt-3" :rows="c.annualChart.value" :locale="languagePreference" /></div>
+            <div v-show="activeChart === 'debt'" role="tabpanel"><div class="mt-4 flex justify-between"><p class="text-sm font-semibold">Restschuldverlauf</p><strong class="text-sm text-teal-800">{{ languagePreference === 'en' ? 'Debt-free in' : 'Schuldenfrei in' }} {{ years(c.activeScenario.value.schedule.paidOffMonth) }}</strong></div><DebtBalanceChart class="mt-3" :rows="c.debtChart.value" :locale="languagePreference" /></div>
           </section>
 
           <section class="print-full grid gap-4 lg:grid-cols-3">

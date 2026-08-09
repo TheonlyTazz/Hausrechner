@@ -5,7 +5,19 @@
 @layer base {
   body { font-feature-settings: "tnum" 1, "ss01" 1; }
   input[type="number"] { @apply tabular-nums; }
+  .dark input, .dark select { @apply border-slate-600 bg-slate-800 text-slate-100; }
 }
+
+.dark .bg-white { background-color: #0f172a !important; }
+.dark .bg-slate-50, .dark .bg-slate-100 { background-color: #1e293b !important; }
+.dark .text-slate-950, .dark .text-slate-900 { color: #f8fafc !important; }
+.dark .text-slate-800, .dark .text-slate-700, .dark .text-slate-600 { color: #cbd5e1 !important; }
+.dark .text-slate-500, .dark .text-slate-400 { color: #94a3b8 !important; }
+.dark .border-slate-100, .dark .border-slate-200, .dark .border-slate-300 { border-color: #334155 !important; }
+.dark .bg-teal-50 { background-color: #042f2e !important; }
+.dark .text-teal-950, .dark .text-teal-900, .dark .text-teal-800 { color: #99f6e4 !important; }
+.dark .bg-red-50 { background-color: #450a0a !important; }
+.dark .text-red-900 { color: #fecaca !important; }
 
 @media print {
   @page { size: A4 landscape; margin: 9mm; }
