@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
 import { useFinancingCalculator } from '../resources/js/Composables/useFinancingCalculator.js';
-import { buildSharePayload, decodeSharePayload, encodeSharePayload, expandSharePayload } from '../resources/js/Composables/useShareableState.js';
+import { buildSharePayload, compressSharePayload, decodeSharePayload, decompressSharePayload, encodeSharePayload, expandSharePayload } from '../resources/js/Composables/useShareableState.js';
 
 describe('financing scenarios', () => {
   test('WI Bank strategy reduces the main bank allocation and total interest', () => {
@@ -62,4 +62,11 @@ test('share payload uses a compact sparse positional schema', () => {
 
 test('legacy object payloads remain readable', () => {
   expect(expandSharePayload({ version: 1, values: { equity: 75000 } })).toEqual({ equity: 75000 });
+});
+
+test('compressed share payload round-trips and is shorter than positional Base64', () => {
+  const payload = [2, 0, 325000, 4, 35000, 6, 85000, 7, 280, 8, 136, 10, 3, 13, 4900, 15, 2400, 38, 1150];
+  const compressed = compressSharePayload(payload);
+  expect(decompressSharePayload(compressed)).toEqual(payload);
+  expect(compressed.length).toBeLessThan(encodeSharePayload(payload).length);
 });

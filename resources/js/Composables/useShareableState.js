@@ -1,6 +1,8 @@
 import { onMounted, ref, watch } from 'vue';
+import LZString from 'lz-string';
 
-const PREFIX = '#p=';
+const PREFIX = '#z=';
+const POSITIONAL_PREFIX = '#p=';
 const LEGACY_PREFIX = '#profile=';
 
 // Never reorder this schema: its indexes are part of the public share-link format.
@@ -25,6 +27,8 @@ const fromBase64Url = value => {
 
 export const encodeSharePayload = payload => toBase64Url(new TextEncoder().encode(JSON.stringify(payload)));
 export const decodeSharePayload = value => JSON.parse(new TextDecoder().decode(fromBase64Url(value)));
+export const compressSharePayload = payload => LZString.compressToEncodedURIComponent(JSON.stringify(payload));
+export const decompressSharePayload = value => JSON.parse(LZString.decompressFromEncodedURIComponent(value));
 
 // Version 2 is a sparse positional array: [version, fieldIndex, value, fieldIndex, value, ...].
 export const buildSharePayload = (inputs, defaults) => SHARE_SCHEMA.reduce((payload, key, index) => {
@@ -48,13 +52,15 @@ export function useShareableState(inputs, defaults, language = { value: 'de' }) 
   let ready = false;
   const clean = data => Object.fromEntries(Object.entries(data || {}).filter(([key, value]) => allowed.has(key) && ['number', 'boolean', 'string'].includes(typeof value)));
   const text = (de, en) => language.value === 'en' ? en : de;
-  const syncUrl = () => history.replaceState(null, '', `${location.pathname}${location.search}${PREFIX}${encodeSharePayload(buildSharePayload(clean({ ...inputs }), defaults))}`);
+  const syncUrl = () => history.replaceState(null, '', `${location.pathname}${location.search}${PREFIX}${compressSharePayload(buildSharePayload(clean({ ...inputs }), defaults))}`);
 
   onMounted(() => {
-    const prefix = location.hash.startsWith(PREFIX) ? PREFIX : (location.hash.startsWith(LEGACY_PREFIX) ? LEGACY_PREFIX : null);
+    const prefix = [PREFIX, POSITIONAL_PREFIX, LEGACY_PREFIX].find(candidate => location.hash.startsWith(candidate));
     if (prefix) {
       try {
-        Object.assign(inputs, clean(expandSharePayload(decodeSharePayload(location.hash.slice(prefix.length)))));
+        const encoded = location.hash.slice(prefix.length);
+        const payload = prefix === PREFIX ? decompressSharePayload(encoded) : decodeSharePayload(encoded);
+        Object.assign(inputs, clean(expandSharePayload(payload)));
         shareMessage.value = text('Geteilte Berechnung wurde geladen.', 'Shared calculation loaded.');
       } catch {
         shareMessage.value = text('Der geteilte Link ist ungültig.', 'The shared link is invalid.');
