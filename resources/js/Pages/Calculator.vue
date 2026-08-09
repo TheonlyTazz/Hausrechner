@@ -3,6 +3,7 @@ import { ref } from 'vue';
 import AmortizationChart from '../Components/AmortizationChart.vue';
 import DebtBalanceChart from '../Components/DebtBalanceChart.vue';
 import FinancingWizard from '../Components/FinancingWizard.vue';
+import ProfileManager from '../Components/ProfileManager.vue';
 import { useFinancingCalculator } from '../Composables/useFinancingCalculator';
 import { useUiPreferences } from '../Composables/useUiPreferences';
 
@@ -15,6 +16,7 @@ const print = () => window.print();
 const activeChart = ref('payments');
 const activeInput = ref('object');
 const wizardOpen = ref(false);
+const profilesOpen = ref(false);
 const inputTabs = [['object', 'Objekt'], ['income', 'Einkommen'], ['household', 'Haushalt'], ['loans', 'Darlehen']];
 const preferences = useUiPreferences(pageRoot);
 languagePreference.value = preferences.language.value;
@@ -25,7 +27,7 @@ languagePreference.value = preferences.language.value;
     <header class="bg-slate-950 text-white no-print">
       <div class="mx-auto flex max-w-[1600px] items-center justify-between px-4 py-4 lg:px-8">
         <div><p class="text-xs font-semibold uppercase tracking-[.2em] text-teal-300">Finanzierungsplanung · lokal</p><h1 class="text-xl font-bold">Hauskaufrechner Hessen</h1></div>
-        <div class="flex flex-wrap justify-end gap-2"><button type="button" class="rounded-lg border border-slate-700 px-3 py-2 text-sm font-semibold hover:bg-slate-800" :aria-label="preferences.language.value === 'de' ? 'Switch to English' : 'Auf Deutsch wechseln'" @click="preferences.toggleLanguage(); languagePreference = preferences.language.value">{{ preferences.language.value === 'de' ? 'EN' : 'DE' }}</button><button type="button" class="rounded-lg border border-slate-700 px-3 py-2 text-sm font-semibold hover:bg-slate-800" aria-label="Farbschema wechseln" @click="preferences.toggleTheme">{{ preferences.theme.value === 'dark' ? '☀' : '◐' }}</button><button type="button" class="rounded-lg bg-teal-500 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-teal-400" @click="wizardOpen = true">Planungs-Wizard</button><button @click="print" class="rounded-lg bg-white px-4 py-2 text-sm font-semibold text-slate-900 hover:bg-teal-50">PDF / Druckansicht</button></div>
+        <div class="flex flex-wrap justify-end gap-2"><button type="button" class="rounded-lg border border-slate-700 px-3 py-2 text-sm font-semibold hover:bg-slate-800" :aria-label="preferences.language.value === 'de' ? 'Switch to English' : 'Auf Deutsch wechseln'" @click="preferences.toggleLanguage(); languagePreference = preferences.language.value">{{ preferences.language.value === 'de' ? 'EN' : 'DE' }}</button><button type="button" class="rounded-lg border border-slate-700 px-3 py-2 text-sm font-semibold hover:bg-slate-800" aria-label="Farbschema wechseln" @click="preferences.toggleTheme">{{ preferences.theme.value === 'dark' ? '☀' : '◐' }}</button><button type="button" class="rounded-lg border border-slate-700 px-3 py-2 text-sm font-semibold hover:bg-slate-800" @click="profilesOpen = true">Profile</button><button type="button" class="rounded-lg bg-teal-500 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-teal-400" @click="wizardOpen = true">Planungs-Wizard</button><button @click="print" class="rounded-lg bg-white px-4 py-2 text-sm font-semibold text-slate-900 hover:bg-teal-50">PDF / Druckansicht</button></div>
       </div>
     </header>
 
@@ -137,5 +139,6 @@ languagePreference.value = preferences.language.value;
       </div>
     </main>
     <FinancingWizard v-if="wizardOpen" :calculator="c" @close="wizardOpen = false" />
+    <ProfileManager v-if="profilesOpen" :inputs="c.inputs" @close="profilesOpen = false" />
   </div>
 </template>
